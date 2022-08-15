@@ -4,7 +4,7 @@ import models.lossesEL as L
 import torch as th
 import torch.nn as nn
 import math
-
+from .cat_net import norm
 ACT = nn.Identity()
 
 class CatELModule(ELModule):
@@ -90,7 +90,14 @@ class CatELModule(ELModule):
         res = th.abs((th.linalg.norm(x, axis=1) - 1)) #force embedding vector to have size less than 1
         res = th.zeros(res.shape, device = res.device)
         return res
-        
+
+    def intersection_equivalence(self, a, b, c):
+        a = self.net_object(a)
+        b = self.net_object(b)
+        intersection, *_ = self.prod_net(a, b)
+        c = self.net_object(c)
+        return norm(intersection,c)
+    
     
     def gci0_loss(self, data, neg = False, indices= None):
         device = self.dummy_param.device

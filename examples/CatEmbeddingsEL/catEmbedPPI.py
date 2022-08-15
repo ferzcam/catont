@@ -16,7 +16,7 @@ from mowl.datasets.base import PathDataset
 from mowl.datasets.builtin import PPIYeastSlimDataset, PPIYeastDataset
 
 sys.path.append("../../")
-from models.catPPIEL import CatPPIEL
+from models.ppiEL import PPIEL
 
 
 
@@ -37,7 +37,7 @@ def main(species):
         #milestones = [20,50, 90,150, 180,400,  600, 800, 1000, 1300, 1600, 20001001] #only_nf4\
         gamma = 0.8
         margin = 5
-        epochs = 5000
+        epochs = 10000
         step = 40
         milestones = [i*step for i in range(epochs//step)]
         milestones.append("70000000000")
@@ -57,7 +57,7 @@ def main(species):
                                                                         
 
         
-    model = CatPPIEL(
+    model = PPIEL(
         ds, 
         128,#4096*8, #4096*4, #bs 
         embedding_size, #embeddings size
@@ -83,5 +83,3 @@ def main(species):
 
 if __name__ == '__main__':
     main()
-    
-    

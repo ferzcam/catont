@@ -14,7 +14,6 @@ class CatEmbeddingsPPIEvaluator(AxiomsRankBasedEvaluator):
 
     def __init__(
             self,
-            axioms,
             eval_method,
             axioms_to_filter,
             class_name_indexemb,
@@ -24,7 +23,7 @@ class CatEmbeddingsPPIEvaluator(AxiomsRankBasedEvaluator):
             num_points = None
     ):
         self.num_points = num_points
-        super().__init__(axioms, eval_method, axioms_to_filter, device, verbose)
+        super().__init__(eval_method, axioms_to_filter, device, verbose)
 
         self.class_name_indexemb = class_name_indexemb
         self.relation_name_indexemb = rel_name_indexemb
@@ -153,30 +152,45 @@ class CatEmbeddingsPPIEvaluator(AxiomsRankBasedEvaluator):
 
     def get_metrics(self):
         return self._metrics
+
+
+class CatEmbeddingsPPIEvaluatorTune(CatEmbeddingsPPIEvaluator):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _init_axioms(self, axioms):
+        return axioms
+
+    def _init_axioms_to_filter(self, axioms):
+        return axioms
+        
+    
 class CatEmbeddingsIntersectionEvaluator(AxiomsRankBasedEvaluator):
 
     def __init__(
             self,
             eval_method,
             class_name_indexemb,
-            product_generator,
-            entailment,
             device = "cpu",
-            verbose = False
+            verbose = False,
+            num_points = None
     ):
 
         super().__init__(eval_method, None, device, verbose)
-
+        self.num_points = num_points
         self.class_name_indexemb = class_name_indexemb
-        self.product_generator = product_generator
-        self.entailment = entailment
-                        
+        
         self._loaded_eval_data = False
         self._loaded_ht_data = False        
     
     def _init_axioms(self, axioms):
-        return axioms
-                                                     
+        axioms = axioms[:].cpu().detach().numpy().tolist()
+        axioms = [tuple(x) for x in axioms]
+        if self.num_points is None:
+            return axioms
+        else:
+            return random.sample(axioms, self.num_points)
 
     def _init_axioms_to_filter(self, axioms):
         return axioms
@@ -197,9 +211,9 @@ class CatEmbeddingsIntersectionEvaluator(AxiomsRankBasedEvaluator):
  #       else:
  #           eval_data = samples
 
-        test_model = TestModuleIntersection(self.product_generator, self.entailment, self.eval_method, self.embeddings).to(self.device)
+        test_model = TestModuleIntersection(self.eval_method).to(self.device)
 
-        preds = np.zeros((len(samples), len(self.embeddings)), dtype=np.float32)
+        preds = np.zeros((len(samples), len(self.class_name_indexemb)), dtype=np.float32)
             
         test_dataset = TestDatasetIntersection(samples, self.class_name_indexemb, self.left_side_dict)
     
@@ -250,13 +264,13 @@ class CatEmbeddingsIntersectionEvaluator(AxiomsRankBasedEvaluator):
         findex = rankdata((res), method='average')
         frank = findex[d]
 
-        return rank, frank, len(self.embeddings)
+        return rank, frank, len(self.class_name_indexemb)
 
 
-    def __call__(self, axioms, embeddings, init_axioms = False):
-        self.embeddings = embeddings
-        self.left_side_dict = {v[:-1]:k for k,v in enumerate(axioms)}
-        predictions = self.get_predictions(axioms)
+    def __call__(self, axioms):
+        self.axioms = self._init_axioms(axioms)
+        self.left_side_dict = {v[:-1]:k for k,v in enumerate(self.axioms)}
+        predictions = self.get_predictions(self.axioms)
         tops = {1: 0, 3: 0, 5: 0, 10:0, 100:0, 1000:0}
         ftops = {1: 0, 3: 0, 5: 0, 10:0, 100:0, 1000:0}
         mean_rank = 0
@@ -265,7 +279,7 @@ class CatEmbeddingsIntersectionEvaluator(AxiomsRankBasedEvaluator):
         franks = {}
         
         n = 0
-        for axiom in tqdm(axioms, total = len(axioms)):
+        for axiom in tqdm(self.axioms, total = len(self.axioms)):
             rank, frank, worst_rank = self.compute_axiom_rank(axiom, predictions)
             
             if rank is None:
@@ -311,6 +325,9 @@ class CatEmbeddingsIntersectionEvaluator(AxiomsRankBasedEvaluator):
 
         return
 
+    def get_metrics(self):
+        return self._metrics
+    
 
 class CatEmbeddingsSubsumptionAsIntersectionEvaluator(AxiomsRankBasedEvaluator):
 
@@ -692,14 +709,9 @@ class TestDatasetPPI(IterableDataset):
 
     
 class TestModuleIntersection(nn.Module):
-    def __init__(self, prod_generator, entailment, method, embeddings):
-        super().__init__()
-
-        self.prod_generator = prod_generator
+    def __init__(self, method):
+        super().__init__() 
         self.method = method
-        self.entailment = entailment
-        embeddings = list(embeddings.values())
-        self.embeddings = nn.Embedding(len(embeddings), len(embeddings[0]))
 
     def forward(self, x):
         bs, num_axioms, ents = x.shape
@@ -710,24 +722,7 @@ class TestModuleIntersection(nn.Module):
         c_right = x[:,1]
         d = x[:,2]
 
-        #c_left = self.embeddings(c_left)
-        #c_right = self.embeddings(c_right)
-        #d = self.embeddings(d)
-        
-        intersection = self.prod_generator(c_left, c_right)
-
-        #scores = self.entailment(intersection, d)
-        #estim_d = self.entailment.get_consequent(intersection, d)
-        #int_back = self.entailment.get_consequent(estim_d, intersection)
-        #estim_back = self.entailment.get_consequent(int_back, d)
-        #scores = self.method(intersection,estim_back)
-
-        #scores = self.entailment(intersection, d)
-        scores = self.entailment(c_left, c_right, d)
-        
-
-#        x = self.method(x)
-
+        scores = self.method(c_left, c_right, d)
         x = scores.reshape(bs, num_axioms)
 
         return x
@@ -746,7 +741,7 @@ class TestDatasetIntersection(IterableDataset):
     def get_data(self):
         for axiom in self.data:
             c_left, c_right, d = axiom
-#            c_left, c_right = self.class_name_indexemb[c_left], self.class_name_indexemb[c_right]
+
             new_array = np.array(self.predata, copy = True)
             new_array[:,0] = c_left
             new_array[:,1] = c_right
