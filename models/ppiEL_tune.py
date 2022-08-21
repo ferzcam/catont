@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import trange
 import numpy as np
-
+import os
 from mowl.projection.factory import projector_factory
 import tempfile
 import ray
@@ -79,14 +79,19 @@ def train(config, training_data = None, validation_data = None, num_classes = No
     
     file_ = tempfile.NamedTemporaryFile(delete=False)
     file_name = file_.name
-        
-    model_filepath = file_name
-    print(f"model will be saved in {model_filepath}")
 
+    path_dir = "/ibex/scratch/zhapacfp/catont/examples/CatEmbeddingsEL/"
+    model_filepath = path_dir + file_name[1:]
+    print(f"model will be saved in {model_filepath}")
         
     model = init_model(num_classes, num_obj_props, config["hom_set"], config["embedding_size"],  config["dropout"],  config["depth"], device)
     th.save(model.state_dict(), model_filepath)
-    optimizer = config["optimizer"](model.parameters(), lr=config["max_lr"])
+
+    if config["optimizer"] == "adam":
+        optimizer = th.optim.Adam(model.parameters(), lr=config["max_lr"])
+    elif config["optimizer"] == "rmsprop":
+        optimizer = th.optim.RMSprop(model.parameters(), lr=config["max_lr"])
+
     best_loss = float('inf')
     best_mr = float('inf')
         
@@ -136,18 +141,17 @@ def train(config, training_data = None, validation_data = None, num_classes = No
             
         train_loss += loss.detach().item()
 
-        loss = 0
+        valid_loss = 0
         with th.no_grad():
             model.eval()
-            valid_loss = 0
             gci2_data = validation_data["gci2"][:]
             loss = model(gci2_data, "gci2")
             loss = th.mean(loss)
             valid_loss += loss.detach().item()
 
         checkpoint = epoch + 10
-        if best_loss > train_loss:
-            best_loss = train_loss
+        if best_loss > valid_loss:
+            best_loss = valid_loss
             th.save(model.state_dict(), model_filepath)
         print(f'Epoch {epoch}: Train loss: {train_loss} Valid loss: {valid_loss}')
 
@@ -158,9 +162,17 @@ def train(config, training_data = None, validation_data = None, num_classes = No
             #         best_mr = mr
             #         th.save(self.model.state_dict(), self.model_filepath)
                 
-    return file_name
+    return model_filepath
 
-def evaluate(config, model_filepath, testing_edges, to_filter, num_classes, num_obj_props, device, class_index_dict, object_property_index_dict):
+def evaluate(config, model_filepath, data, device):
+    
+    testing_edges = data["testing_edges"]
+    to_filter = data["to_filter"]
+    num_classes = data["num_classes"]
+    num_obj_props = data["num_obj_props"]
+    class_index_dict = data["class_index_dict"] 
+    object_property_index_dict = data["object_property_index_dict"]
+
     model = init_model(num_classes, num_obj_props, config["hom_set"], config["embedding_size"],  config["dropout"],  config["depth"], device)
         
     print('Load the best model', model_filepath)
@@ -175,11 +187,21 @@ def evaluate(config, model_filepath, testing_edges, to_filter, num_classes, num_
         evaluator.print_metrics()
         return evaluator.get_metrics()
 
-        return training_data, validation_data, testing_edges, to_filter, num_classes, num_obj_props
-def train_and_evaluate(config, checkpoint_dir = None, training_data= None, validation_data=None, testing_edges = None, to_filter = None, num_classes=None, num_obj_props=None, class_index_dict=None, object_property_index_dict=None, device = None):
+
+def train_and_evaluate(config, checkpoint_dir = None, data= None, device = None):
+
+    training_data = data["training_data"]
+    validation_data = data["validation_data"]
+    testing_edges = data["testing_edges"]
+    to_filter = data["to_filter"]
+    num_classes = data["num_classes"]
+    num_obj_props = data["num_obj_props"]
+    class_index_dict = data["class_index_dict"] 
+    object_property_index_dict = data["object_property_index_dict"]
+
     print("training...")
     file_name = train(config, training_data, validation_data, num_classes, num_obj_props, device = device)
     print("evaluating...")
-    metrics = evaluate(config, file_name, testing_edges, to_filter, num_classes, num_obj_props, device, class_index_dict, object_property_index_dict)
+    metrics = evaluate(config, file_name, data, device)
     tune.report(mean_rank = metrics["mean_rank"])
     return
