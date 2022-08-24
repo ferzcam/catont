@@ -41,7 +41,7 @@ class ObjectGenerator1(nn.Module):
             HID_ACT,
             nn.Dropout(dropout),
             nn.Linear(embedding_size, embedding_size),
-            norm_layer,
+            #norm_layer,
             FINAL_ACT
         )
 
@@ -62,7 +62,7 @@ class ObjectGenerator2(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(embedding_size, embedding_size),
 
-            norm_layer,
+            #norm_layer,
             FINAL_ACT
         )
 
@@ -233,7 +233,7 @@ class EntailmentHomSet(nn.Module):
                 morphism.append(MorphismBlock(embedding_size, dropout))
 
             morphism.append(nn.Linear(embedding_size, embedding_size))
-            morphism.append(norm_layer)
+            #morphism.append(norm_layer)
             
             morphism.append(FINAL_ACT)
             self.hom_set.append(morphism)
@@ -294,7 +294,7 @@ class Existential(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(embedding_size, embedding_size),
 
-            norm_layer_obj,
+            #norm_layer_obj,
 
             FINAL_ACT
         )
@@ -307,7 +307,7 @@ class Existential(nn.Module):
             
             nn.Linear(2*embedding_size, embedding_size),
 
-            norm_layer_rel,
+            #norm_layer_rel,
 
 
             FINAL_ACT

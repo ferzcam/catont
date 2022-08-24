@@ -70,25 +70,25 @@ class CatELModule(ELModule):
         # Embedding network for the ontology ojects
         self.net_object = nn.Sequential(
             self.embed,
-            nn.Linear(embedding_size, embedding_size),
-            self.norm_objects,
-            ACT,
+#            nn.Linear(embedding_size, embedding_size),
+#            self.norm_objects,
+#            ACT,
 
         )
 
         # Embedding network for the ontology relations
         self.net_rel = nn.Sequential(
             self.embed_rel,
-            nn.Linear(embedding_size, embedding_size),
-            self.norm_relations,
-            ACT
+#            nn.Linear(embedding_size, embedding_size),
+#            self.norm_relations,
+#            ACT
 
         )
         
     def class_reg(self, x):
         
         res = th.abs((th.linalg.norm(x, axis=1) - 1)) #force embedding vector to have size less than 1
-        res = th.zeros(res.shape, device = res.device)
+#        res = th.zeros(res.shape, device = res.device)
         return res
 
     def intersection_equivalence(self, a, b, c):
