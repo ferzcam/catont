@@ -152,8 +152,8 @@ def train(config, training_data = None, validation_data = None, num_classes = No
             valid_loss += loss.detach().item()
 
         checkpoint = epoch + 10
-        if best_loss > valid_loss:
-            best_loss = valid_loss
+        if best_loss > train_loss:
+            best_loss = train_loss
             th.save(model.state_dict(), model_filepath)
         print(f'Epoch {epoch}: Train loss: {train_loss} Valid loss: {valid_loss}')
 
