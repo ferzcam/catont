@@ -37,7 +37,7 @@ def run(projector, graph_method):
     graph = proj.project(dataset.ontology)
     #HPO
     emb_sizes = [32, 64, 128]
-    epochs = [100, 150, 200]
+    epochs = [200]
     lrs = [0.01, 0.001, 0.0001, 0.00001]
     batch_sizes = [1024, 2048, 4096]
 
