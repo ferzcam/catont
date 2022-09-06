@@ -80,7 +80,7 @@ def train(config, training_data = None, validation_data = None, num_classes = No
     file_ = tempfile.NamedTemporaryFile(delete=False)
     file_name = file_.name
 
-    path_dir = "/ibex/scratch/zhapacfp/catont/examples/CatEmbeddingsEL/"
+    path_dir = "/home/zhapacfp/Github/catont/examples/CatEmbeddingsEL/"
     model_filepath = path_dir + file_name[1:]
     print(f"model will be saved in {model_filepath}")
         
@@ -89,13 +89,15 @@ def train(config, training_data = None, validation_data = None, num_classes = No
 
     if config["optimizer"] == "adam":
         optimizer = th.optim.Adam(model.parameters(), lr=config["max_lr"])
+        cycle_momentum = False
     elif config["optimizer"] == "rmsprop":
         optimizer = th.optim.RMSprop(model.parameters(), lr=config["max_lr"])
+        cycle_momentum = True
 
     best_loss = float('inf')
     best_mr = float('inf')
         
-    scheduler = th.optim.lr_scheduler.CyclicLR(optimizer, config["min_lr"], config["max_lr"], config["step_size_up"], cycle_momentum = False)
+    scheduler = th.optim.lr_scheduler.CyclicLR(optimizer, config["min_lr"], config["max_lr"], config["step_size_up"], cycle_momentum = cycle_momentum)
                 
     size_datasets = [(k,len(v)) for k,v in training_data.items()]
     total_samples = sum([v for k,v in size_datasets])
