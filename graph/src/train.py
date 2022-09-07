@@ -48,7 +48,7 @@ def train(graph, graph_method, dataset, out_model_file = None, emb_size = None, 
 
 def generate_scores(model, dataset, out_file):
 
-    model.get_embeddings()
+    model.load_best_model()
     projector = TaxonomyWithRelsProjector(taxonomy = True, relations = [])
     training_graph = projector.project(dataset.ontology)
     testing_graph = projector.project(dataset.testing)
@@ -92,7 +92,9 @@ def generate_scores(model, dataset, out_file):
 
         src, rel, dst = entities_to_id[edge.src], relations_to_id[edge.rel], entities_to_id[sampled_dst]
         point = th.tensor([src, rel, dst], dtype = th.long, device = model.device).unsqueeze(0)
-        score = th.sigmoid(model.score_method_tensor(point)).detach().item()
+        score = model.score_method_tensor(point)
+        score = th.sigmoid(score).detach().item()
+        
         scores.append([0, score])
 
     print(len(scores))
@@ -113,6 +115,7 @@ def compute_metrics(eval_tsv_file):
     labels = [label for label, score in eval_data]
     preds = [score for label, score in eval_data]
 
+        
     mae_pos = round(sum(preds[:n_pos]) / n_pos, 4)
     auc = round(roc_auc_score(labels, preds), 4)
     aupr = round(average_precision_score(labels, preds), 4)
