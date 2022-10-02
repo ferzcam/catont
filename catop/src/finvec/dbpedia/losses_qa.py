@@ -10,7 +10,7 @@ def cosine_similarity(a, b):
     a_norm = th.norm(a, p=2, dim=1)
     b_norm = th.norm(b, p=2, dim=1)
     dot_product = th.sum(a * b, dim=1, keepdim=True)
-    return th.sigmoid(dot_product)
+    return 1- th.sigmoid(dot_product)
 
 def compute_product_loss(operands, product, morphisms):
     """Compute the loss for the product of two objects

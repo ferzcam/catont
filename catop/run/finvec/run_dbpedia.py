@@ -64,7 +64,7 @@ def parse_args(args=None):
     parser.add_argument('--emb_dim', default=256, type=int)
     parser.add_argument('--lr', default=0.0001, type=float)
     parser.add_argument('--valid_interval', default=50, type=int)
-    parser.add_argument('--verbose', default=1, type=int)
+    parser.add_argument('--verbose', default=0, type=int)
     parser.add_argument('--tolerance', default=3, type=int)
     return parser.parse_args(args)
 
@@ -78,6 +78,7 @@ def train():
 
     save_root = 'tmp/'
     device = th.device(f'cuda:{cfg.gpu}' if th.cuda.is_available() else 'cpu')
+    print(f"Running on {device}")
     e_dict, c_dict, r_dict, ot, is_data_train = get_mapper(cfg.root + cfg.dataset + '/')
     train_ot = ppc(ot, e_dict, c_dict, r_dict, query_type='ot', answer_type=None, flag=None)
     train_is = ppc(is_data_train, e_dict, c_dict, r_dict, query_type='is', answer_type=None, flag=None)
@@ -119,7 +120,7 @@ def train():
         model.train()
         avg_loss = []
         if cfg.verbose == 1:
-            train_dl = tqdm.tqdm(train_dl)
+            train_dl = tqdm.tqdm(train_dl, total = len(train_dl))
         for batch in train_dl:
             batch = batch.to(device)
             qe_losses, qc_losses, cc_loss, ec_loss = model(batch)
@@ -147,9 +148,9 @@ def train():
             #mrr_e = round(sum([rr_1p_e, rr_2p_e, rr_3p_e, rr_2i_e, rr_3i_e, rr_pi_e, rr_ip_e, rr_2u_e, rr_up_e]) / 9, 3)
             #mh1_e = round(sum([h1_1p_e, h1_2p_e, h1_3p_e, h1_2i_e, h1_3i_e, h1_pi_e, h1_ip_e, h1_2u_e, h1_up_e]) / 9, 3)
             #mh3_e = round(sum([h3_1p_e, h3_2p_e, h3_3p_e, h3_2i_e, h3_3i_e, h3_pi_e, h3_ip_e, h3_2u_e, h3_up_e]) / 9, 3)
-            mrr_e = round(sum([rr_1p_e, rr_2p_e, rr_3p_e, rr_2i_e, rr_3i_e]) / 5, 3)
-            mh1_e = round(sum([h1_1p_e, h1_2p_e, h1_3p_e, h1_2i_e, h1_3i_e]) / 5, 3)
-            mh3_e = round(sum([h3_1p_e, h3_2p_e, h3_3p_e, h3_2i_e, h3_3i_e]) / 5, 3)
+            mrr_e = round(sum([rr_1p_e, rr_2p_e, rr_3p_e, rr_2i_e, rr_3i_e]) / 6, 3)
+            mh1_e = round(sum([h1_1p_e, h1_2p_e, h1_3p_e, h1_2i_e, h1_3i_e]) / 6, 3)
+            mh3_e = round(sum([h3_1p_e, h3_2p_e, h3_3p_e, h3_2i_e, h3_3i_e]) / 6, 3)
             print(f'Entity Answering Mean: \n MRR: {mrr_e}, H1: {mh1_e}, H3: {mh3_e}')
             # print('Validating Concept Answering:')
             # _, rr_1p_c, h1_1p_c, h3_1p_c, _ = evaluate_c(model, valid_dl_1p_c, test_filter_c_1p, device, query_type='1p')
@@ -210,7 +211,7 @@ def train():
             # mh1_c = round(sum([h1_1p_c, h1_2p_c, h1_3p_c, h1_2i_c, h1_3i_c, h1_pi_c, h1_ip_c, h1_2u_c, h1_up_c]) / 9, 3)
             # mh3_c = round(sum([h3_1p_c, h3_2p_c, h3_3p_c, h3_2i_c, h3_3i_c, h3_pi_c, h3_ip_c, h3_2u_c, h3_up_c]) / 9, 3)
             # print(f'Concept Answering Mean: \n MRR: {mrr_c}, H1: {mh1_c}, H3: {mh3_c}')
-            # break
+            break
 
 
 if __name__ == '__main__':

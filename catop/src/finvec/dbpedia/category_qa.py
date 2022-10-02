@@ -1,7 +1,6 @@
 """This module contains the Category class customized for query-answering."""
 import torch as th
 import torch.nn as nn
-from src.finvec.category import CodomainFunctor, DomainFunctor, Existential, ExistentialSlicer, Negation, RelationExistential, Universal
 import src.finvec.dbpedia.losses_qa as L
 from src.morphism import TransformationMorphism
 
@@ -71,11 +70,7 @@ class Category(nn.Module):
             "negation_generator": Negation(embedding_size),
             "product_generator": Product(), 
             "relation_existential_generator": RelationExistential(embedding_size),
-            "universal_generator": Universal(embedding_size),
-
-
-
-
+            "universal_generator": Universal(embedding_size)
         })
 
     def get_embeddings(self):
@@ -190,25 +185,13 @@ class Category(nn.Module):
             relation_1p = x_1p[:, :, -2]
             answer_1p = x_1p[:, :, -1]
 
-            # Positive samples
-            anchor_1p_pos = anchor_1p[:, 0]
-            relation_1p_pos = relation_1p[:, 0]
-            answer_1p_pos = answer_1p[:, 0]
+            # Positive and negative samples
+            data = th.stack([anchor_1p, relation_1p, answer_1p], dim=-1)
+            data = data.reshape(-1, 3)
+            logits = self.q_1p_loss(data).reshape(-1, self.num_negatives + 1)
 
-            pos_logits = self.q_1p_loss(th.stack([anchor_1p_pos, relation_1p_pos,
-                                                  answer_1p_pos], dim=-1))
-            pos_logits = pos_logits.unsqueeze(dim=-1)
-            # Negative samples
-            anchor_1p_neg = anchor_1p[:, 1:]
-            relation_1p_neg = relation_1p[:, 1:]
-            answer_1p_neg = answer_1p[:, 1:]
+            loss_1p = self.compute_loss(logits)
 
-            neg_data = th.stack([anchor_1p_neg, relation_1p_neg, answer_1p_neg], dim=-1)
-            neg_data = neg_data.reshape(-1, 3)
-
-            neg_logits = self.q_1p_loss(neg_data).reshape(-1, self.num_negatives)
-
-            loss_1p = - th.nn.functional.logsigmoid(pos_logits - neg_logits).mean()
         else:
             loss_1p = 0
 
@@ -220,30 +203,13 @@ class Category(nn.Module):
             relation_2p_2 = x_2p[:, :, -2]
             answer_2p = x_2p[:, :, -1]
 
-            # Positive samples
-            anchor_2p_pos = anchor_2p[:, 0]
-            relation_2p_1_pos = relation_2p_1[:, 0]
-            relation_2p_2_pos = relation_2p_2[:, 0]
-            answer_2p_pos = answer_2p[:, 0]
+            # Positive and negative samples
+            data = th.stack([anchor_2p, relation_2p_1, relation_2p_2, answer_2p], dim=-1)
+            data = data.reshape(-1, 4)
+            logits = self.q_2p_loss(data).reshape(-1, self.num_negatives + 1)
+            
+            loss_2p = self.compute_loss(logits)
 
-            pos_data = th.stack([anchor_2p_pos, relation_2p_1_pos, relation_2p_2_pos,
-                                 answer_2p_pos], dim=-1)
-            pos_logits = self.q_2p_loss(pos_data).unsqueeze(dim=-1)
-
-            # Negative samples
-            anchor_2p_neg = anchor_2p[:, 1:]
-            relation_2p_1_neg = relation_2p_1[:, 1:]
-            relation_2p_2_neg = relation_2p_2[:, 1:]
-            answer_2p_neg = answer_2p[:, 1:]
-
-            neg_data = th.stack([anchor_2p_neg, relation_2p_1_neg, relation_2p_2_neg,
-                                 answer_2p_neg], dim=-1)
-
-            neg_data = neg_data.reshape(-1, 4)
-
-            neg_logits = self.q_2p_loss(neg_data).reshape(-1, self.num_negatives)
-
-            loss_2p = - th.nn.functional.logsigmoid(pos_logits - neg_logits).mean()
         else:
             loss_2p = 0
 
@@ -255,32 +221,13 @@ class Category(nn.Module):
             relation_3p_2 = x_3p[:, :, -3]
             relation_3p_3 = x_3p[:, :, -2]
             answer_3p = x_3p[:, :, -1]
-
-            # Positive samples
-            anchor_3p_pos = anchor_3p[:, 0]
-            relation_3p_1_pos = relation_3p_1[:, 0]
-            relation_3p_2_pos = relation_3p_2[:, 0]
-            relation_3p_3_pos = relation_3p_3[:, 0]
-            answer_3p_pos = answer_3p[:, 0]
-
-            pos_data = th.stack([anchor_3p_pos, relation_3p_1_pos, relation_3p_2_pos,
-                                 relation_3p_3_pos, answer_3p_pos], dim=-1)
-            pos_logits = self.q_3p_loss(pos_data).unsqueeze(dim=-1)
-
-            # Negative samples
-            anchor_3p_neg = anchor_3p[:, 1:]
-            relation_3p_1_neg = relation_3p_1[:, 1:]
-            relation_3p_2_neg = relation_3p_2[:, 1:]
-            relation_3p_3_neg = relation_3p_3[:, 1:]
-            answer_3p_neg = answer_3p[:, 1:]
-
-            neg_data = th.stack([anchor_3p_neg, relation_3p_1_neg, relation_3p_2_neg,
-                                 relation_3p_3_neg, answer_3p_neg], dim=-1)
-            neg_data = neg_data.reshape(-1, 5)
-
-            neg_logits = self.q_3p_loss(neg_data).reshape(-1, self.num_negatives)
-
-            loss_3p = - th.nn.functional.logsigmoid(pos_logits - neg_logits).mean()
+            
+            # Positive and negative samples
+            data = th.stack([anchor_3p, relation_3p_1, relation_3p_2,
+                                 relation_3p_3, answer_3p], dim=-1)
+            data = data.reshape(-1, 5)
+            logits = self.q_3p_loss(data).reshape(-1, self.num_negatives + 1)
+            loss_3p = self.compute_loss(logits)
         else:
             loss_3p = 0
 
@@ -293,31 +240,15 @@ class Category(nn.Module):
             relation_2i_2 = x_2i[:, :, -2]
             answer_2i = x_2i[:, :, -1]
 
-            # Positive samples
-            anchor_2i_1_pos = anchor_2i_1[:, 0]
-            relation_2i_1_pos = relation_2i_1[:, 0]
-            anchor_2i_2_pos = anchor_2i_2[:, 0]
-            relation_2i_2_pos = relation_2i_2[:, 0]
-            answer_2i_pos = answer_2i[:, 0]
 
-            pos_logits = self.q_2i_loss(th.stack([anchor_2i_1_pos, relation_2i_1_pos,
-                                                  anchor_2i_2_pos, relation_2i_2_pos,
-                                                  answer_2i_pos], dim=-1)).unsqueeze(dim=-1)
+            # Positive and negative samples
+            data = th.stack([anchor_2i_1, relation_2i_1,
+                                                  anchor_2i_2, relation_2i_2,
+                                                  answer_2i], dim=-1).reshape(-1, 5)
 
-            # Negative samples
-            anchor_2i_1_neg = anchor_2i_1[:, 1:]
-            relation_2i_1_neg = relation_2i_1[:, 1:]
-            anchor_2i_2_neg = anchor_2i_2[:, 1:]
-            relation_2i_2_neg = relation_2i_2[:, 1:]
-            answer_2i_neg = answer_2i[:, 1:]
+            logits = self.q_2i_loss(data).reshape(-1, self.num_negatives + 1)
 
-            neg_data = th.stack([anchor_2i_1_neg, relation_2i_1_neg, anchor_2i_2_neg,
-                                 relation_2i_2_neg, answer_2i_neg], dim=-1)
-            neg_data = neg_data.reshape(-1, 5)
-
-            neg_logits = self.q_2i_loss(neg_data).reshape(-1, self.num_negatives)
-
-            loss_2i = - th.nn.functional.logsigmoid(pos_logits - neg_logits).mean()
+            loss_2i = self.compute_loss(logits)
 
         else:
             loss_2i = 0
@@ -332,38 +263,16 @@ class Category(nn.Module):
             anchor_3i_3 = x_3i[:, :, -3]
             relation_3i_3 = x_3i[:, :, -2]
             answer_3i = x_3i[:, :, -1]
+            # Positive and negative samples
 
-            # Positive samples
-            anchor_3i_1_pos = anchor_3i_1[:, 0]
-            relation_3i_1_pos = relation_3i_1[:, 0]
-            anchor_3i_2_pos = anchor_3i_2[:, 0]
-            relation_3i_2_pos = relation_3i_2[:, 0]
-            anchor_3i_3_pos = anchor_3i_3[:, 0]
-            relation_3i_3_pos = relation_3i_3[:, 0]
-            answer_3i_pos = answer_3i[:, 0]
+            data = th.stack([anchor_3i_1, relation_3i_1,
+                                                  anchor_3i_2, relation_3i_2,
+                                                  anchor_3i_3, relation_3i_3,
+                                                  answer_3i], dim=-1).reshape(-1, 7)
 
-            pos_logits = self.q_3i_loss(th.stack([anchor_3i_1_pos, relation_3i_1_pos,
-                                                  anchor_3i_2_pos, relation_3i_2_pos,
-                                                  anchor_3i_3_pos, relation_3i_3_pos,
-                                                  answer_3i_pos], dim=-1)).unsqueeze(dim=-1)
+            logits = self.q_3i_loss(data).reshape(-1, self.num_negatives + 1)
 
-            # Negative samples
-            anchor_3i_1_neg = anchor_3i_1[:, 1:]
-            relation_3i_1_neg = relation_3i_1[:, 1:]
-            anchor_3i_2_neg = anchor_3i_2[:, 1:]
-            relation_3i_2_neg = relation_3i_2[:, 1:]
-            anchor_3i_3_neg = anchor_3i_3[:, 1:]
-            relation_3i_3_neg = relation_3i_3[:, 1:]
-            answer_3i_neg = answer_3i[:, 1:]
-
-            neg_data = th.stack([anchor_3i_1_neg, relation_3i_1_neg, anchor_3i_2_neg,
-                                 relation_3i_2_neg, anchor_3i_3_neg, relation_3i_3_neg,
-                                 answer_3i_neg], dim=-1)
-            neg_data = neg_data.reshape(-1, 7)
-
-            neg_logits = self.q_3i_loss(neg_data).reshape(-1, self.num_negatives)
-
-            loss_3i = - th.nn.functional.logsigmoid(pos_logits - neg_logits).mean()
+            loss_3i = self.compute_loss(logits)
         else:
             loss_3i = 0
 
