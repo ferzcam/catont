@@ -7,7 +7,7 @@ import os
 import pandas as pd
 import argparse
 import tqdm
-
+import time
 import mowl
 mowl.init_jvm("10g")
 from mowl.owlapi.defaults import BOT, TOP
@@ -58,8 +58,8 @@ def parse_args(args=None):
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--gpu', default=0, type=int)
     parser.add_argument('--num_ng', default=4, type=int)
-    parser.add_argument('--bs', default=1024, type=int)
-    parser.add_argument('--num_workers', default=8, type=int)
+    parser.add_argument('--bs', default=1024*16, type=int)
+    parser.add_argument('--num_workers', default=40, type=int)
     parser.add_argument('--max_epochs', default=3000, type=int)
     parser.add_argument('--emb_dim', default=256, type=int)
     parser.add_argument('--lr', default=0.0001, type=float)
@@ -116,6 +116,7 @@ def train():
     max_rr = 0
     optimizer = th.optim.Adam(model.parameters(), lr=cfg.lr)
     for epoch in range(cfg.max_epochs):
+        start = time.time()
         print(f'Epoch {epoch + 1}:')
         model.train()
         avg_loss = []
@@ -175,7 +176,8 @@ def train():
                 tolerance -= 1
 
             th.save(model.state_dict(), save_root + (str(epoch + 1)))
-
+        end = time.time()
+        print(f"Time per epoch: {end-start}")
         if tolerance == 0:
             print(f'Best performance at epoch {epoch - cfg.tolerance * cfg.valid_interval + 1}')
             model.load_state_dict(th.load(save_root + str(epoch - cfg.tolerance * cfg.valid_interval + 1)))
