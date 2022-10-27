@@ -68,11 +68,12 @@ ROOT_DIR = "../case_studies/"
 @ck.option('--num-workers', '-nworkers', type = int, default = 16)
 @ck.option('--embedding-size', '-esize', type = int, default = 10)
 @ck.option('--epochs_mlp', '-epmlp', type = int, default = 1000)
+@ck.option('--lr', '-lr', type = float, default = 0.001)
 @ck.option('--device', '-dev', type = ck.Choice(["cpu", "cuda"]), default = "cpu")
 @ck.option('--train', '-train', is_flag = True)
 @ck.option('--test', '-test', is_flag = True)
 
-def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, epochs_mlp, device, train, test):
+def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, epochs_mlp, lr, device, train, test):
 
     seed_everything(0)
     
@@ -92,11 +93,14 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     elif graph_type == "categorical":
         graph_path = graph_prefix + "cat.projection.edgelist"
 
-    output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_epmlp_{epochs_mlp}/"
+    outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
+    output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_epmlp_{epochs_mlp}_lr_{lr}/"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    if not os.path.exists(outdir_walks_and_w2v):
+        os.makedirs(outdir_walks_and_w2v)
     print("Configuration:")
     print("\tCase study: ", case_study)
     print("\tGraph: ", graph_type)
@@ -108,13 +112,14 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     print("\tNumber of workers: ", num_workers)
     print("\tEmbedding size: ", embedding_size)
     print("\tEpochs MLP: ", epochs_mlp)
+    print("\tLearning rate: ", lr)
     print("\tRoot directory: ", root)
     print("\tOutput directory: ", output_dir)
 
-    walk_outfile = output_dir + "walks.txt"
-    w2v_outfile = output_dir + "w2vmodel"
+    walk_outfile = outdir_walks_and_w2v + "walks.txt"
+    w2v_outfile = outdir_walks_and_w2v + "w2v.model"
 
-    if train:
+    if train and not os.path.exists(w2v_outfile) and not os.path.exists(walk_outfile):
         graph = pd.read_csv(graph_path, sep = "\t", header = None)
         graph.columns = ["h", "r", "t"]
         edges = [Edge(h, r, t) for h, r, t in graph.values]
@@ -225,7 +230,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         
         model = MLP(embedding_size*2)
         model = model.to(device)
-        optimizer = th.optim.Adam(model.parameters(), lr = 0.001)
+        optimizer = th.optim.Adam(model.parameters(), lr = lr)
         criterion = nn.BCELoss()
         criterion_no_reduce = nn.BCELoss(reduction = "none")
 
@@ -249,7 +254,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         
             if best_loss > vloss.item():
                 best_loss = vloss
-                th.save(model.state_dict(), root + "cat/model.th")
+                th.save(model.state_dict(), output_dir + "model.th")
             if (epoch+1)%200 == 0:
                 print("Epoch: ", epoch, "Loss: ", epochs_train_loss, "VLoss: ", vloss.item())
 
@@ -257,7 +262,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
             
 
         # Evaluate
-        model.load_state_dict(th.load(root + "cat/model.th"))
+        model.load_state_dict(th.load(output_dir + "model.th"))
         # Classes in ontology
         classes = sorted(classes)
 

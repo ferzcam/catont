@@ -10,7 +10,8 @@ def generate_params(outfile):
                         for window_size in [5,7,9]:
                             for embedding_size in [50,100,150]:
                                 for epochs_mlp in [1000, 2000, 3000]:
-                                    f.write(f"{num_walks} {walk_length} {alpha} {epochs_w2v} {window_size} {embedding_size} {epochs_mlp}\n")
+                                    for learning_rate in [0.01, 0.001, 0.0001]:
+                                        f.write(f"{num_walks} {walk_length} {alpha} {epochs_w2v} {window_size} {embedding_size} {epochs_mlp} {learning_rate}\n
 
 
 if __name__ == "__main__":

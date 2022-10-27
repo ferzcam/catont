@@ -13,7 +13,13 @@
 
 function readJobArrayParams () {
     num_walks=${1}
-
+    walk_length=${2}
+    alpha=${3}
+    epochs_w2v=${4}
+    window_size=${5}
+    embedding_size=${6}
+    epochs_mlp=${7}
+    learning_rate=${8}
 }
 
 function getJobArrayParams () {
@@ -36,5 +42,5 @@ function getJobArrayParams () {
 getJobArrayParams
 
 # Run the code
-python run
+python run_cge_random_walk.py -case go -g owl2vecstar -nwalks ${num_walks} -wlen ${walk_length} -alpha ${alpha} -epw2v ${epochs_w2v} -wsize ${window_size} -esize ${embedding_size} -epmlp ${epochs_mlp} -lr ${learning_rate} -dev cuda -train -test
 
