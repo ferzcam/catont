@@ -67,13 +67,12 @@ ROOT_DIR = "../case_studies/"
 @ck.option('--window-size', '-wsize', type = int, default = 5)
 @ck.option('--num-workers', '-nworkers', type = int, default = 16)
 @ck.option('--embedding-size', '-esize', type = int, default = 10)
-@ck.option('--epochs_mlp', '-epmlp', type = int, default = 1000)
 @ck.option('--lr', '-lr', type = float, default = 0.001)
 @ck.option('--device', '-dev', type = ck.Choice(["cpu", "cuda"]), default = "cpu")
 @ck.option('--train', '-train', is_flag = True)
 @ck.option('--test', '-test', is_flag = True)
 
-def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, epochs_mlp, lr, device, train, test):
+def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, lr, device, train, test):
 
     seed_everything(0)
     
@@ -94,13 +93,14 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         graph_path = graph_prefix + "cat.projection.edgelist"
 
     outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
-    output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_epmlp_{epochs_mlp}_lr_{lr}/"
+    output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_lr_{lr}/"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     if not os.path.exists(outdir_walks_and_w2v):
         os.makedirs(outdir_walks_and_w2v)
+
     print("Configuration:")
     print("\tCase study: ", case_study)
     print("\tGraph: ", graph_type)
@@ -111,13 +111,12 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     print("\tWindow size: ", window_size)
     print("\tNumber of workers: ", num_workers)
     print("\tEmbedding size: ", embedding_size)
-    print("\tEpochs MLP: ", epochs_mlp)
     print("\tLearning rate: ", lr)
     print("\tRoot directory: ", root)
     print("\tOutput directory: ", output_dir)
 
     walk_outfile = outdir_walks_and_w2v + "walks.txt"
-    w2v_outfile = outdir_walks_and_w2v + "w2v.model"
+    w2v_outfile  = outdir_walks_and_w2v + "w2v.model"
 
     if train and not os.path.exists(w2v_outfile) and not os.path.exists(walk_outfile):
         graph = pd.read_csv(graph_path, sep = "\t", header = None)
@@ -129,7 +128,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
 
         sentences = gensim.models.word2vec.LineSentence(walk_outfile)
         
-        w2v_model = gensim.models.Word2Vec(sentences, vector_size = embedding_size, window = window_size, min_count = 1, workers = num_workers, sg = 1, epochs = epochs_w2v)
+        w2v_model = gensim.models.Word2Vec(sentences, vector_size=embedding_size, window=window_size, min_count=1, workers=num_workers, sg=1, epochs=epochs_w2v)
 
         w2v_model.save(w2v_outfile)
         
@@ -190,8 +189,6 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         labels = th.tensor(labels, dtype = th.float32, device = device)
 
 
-
-
         vdf = pd.read_csv(root+"valid.csv", header = None)
         vdf.columns = ["source", "target"]
     
@@ -234,17 +231,18 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         criterion = nn.BCELoss()
         criterion_no_reduce = nn.BCELoss(reduction = "none")
 
+        early_stop_limit = 3
         best_loss = float("inf")
-        for epoch in tqdm.tqdm(range(epochs_mlp)):
+        vloss_prev = float("inf")
+        for epoch in tqdm.tqdm(range(4000)):
             model.train()
-            epochs_train_loss = 0
             #for i, (batch_data, batch_labels) in enumerate(dataloader):
             optimizer.zero_grad()
             output = model(source_embs, target_embs)
             loss = criterion(output, labels.float().to(device))
             loss.backward()
             optimizer.step()
-            epochs_train_loss += loss.item()
+            train_loss = loss.item()
 
 
             model.eval()
@@ -256,8 +254,15 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
                 best_loss = vloss
                 th.save(model.state_dict(), output_dir + "model.th")
             if (epoch+1)%200 == 0:
-                print("Epoch: ", epoch, "Loss: ", epochs_train_loss, "VLoss: ", vloss.item())
-
+                print("Epoch: ", epoch, "Loss: ", train_loss, "VLoss: ", vloss.item())
+            if vloss_prev < vloss:
+                early_stopping_limit -= 1
+            else:
+                early_stopping_limit = 3
+                vloss_prev = vloss
+            if early_stopping_limit == 0:
+                print(f"Best epoch {epoch}")
+                break
 
             
 
@@ -374,7 +379,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         fhits10 = fhits10/(len(df)-ignored)
         fmrr = fmrr/(len(df)-ignored)
         with open(root + f"{graph_type}_results", "a") as f:
-            f.write(f"{num_walks},{walk_length},{alpha},{epochs_w2v},{window_size},{embedding_size},{epochs_mlp},{hits1},{hits5},{hits10},{mrr},{fhits1},{fhits5},{fhits10},{fmrr}\n")
+            f.write(f"{num_walks},{walk_length},{alpha},{epochs_w2v},{window_size},{embedding_size},{hits1},{hits5},{hits10},{mrr},{fhits1},{fhits5},{fhits10},{fmrr}\n")
         
         print("Ignored: ", ignored)
         print(f"Hits@1\tHits@5\tHits@10\tMRR\tFHits@1\tFHits@5\tFHits@10\tFMRR")
