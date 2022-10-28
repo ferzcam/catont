@@ -10,27 +10,26 @@ from tqdm import tqdm
 import os
 import numpy as np
 import pickle as pk
-from src.train import train, generate_scores, compute_metrics
 import click as ck
 import pandas as pd
-import gensim
-
-import tqdm
-
-import random
-
 import torch as th
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+import random
+import gensim
 
-def seed_everything(seed=0):
+
+def seed_everything(seed=42):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
     th.manual_seed(seed)
     th.cuda.manual_seed(seed)
+    th.cuda.manual_seed_all(seed)
     th.backends.cudnn.deterministic = True
+    th.backends.cudnn.benchmark = False
 
+    
 class MLP(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -74,7 +73,7 @@ ROOT_DIR = "../case_studies/"
 
 def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, lr, device, train, test):
 
-    seed_everything(0)
+    seed_everything(42)
     
     if case_study == "go":
         root = ROOT_DIR + "go_subsumption/"

@@ -1,0 +1,3 @@
+[submodule "graph/src/OpenKE"]
+	path = graph/src/OpenKE
+	url = https://github.com/thunlp/OpenKE
