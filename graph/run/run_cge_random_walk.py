@@ -162,7 +162,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
             if source in vocab and target in vocab:
                 source_embs.append(embeddings[source])
  
-               target_embs.append(embeddings[target])
+                target_embs.append(embeddings[target])
                 labels.append(label)
                 found += 1
             else:
