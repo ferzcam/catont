@@ -154,9 +154,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         classes = pd.read_csv(root + "classes.txt", sep = "\t", header = None)
         classes.columns = ["class"]
         classes = classes["class"].values
-        classes.sort()
-        class_to_id = {c: i for i, c in enumerate(classes)}
-
+                
         relations_file = pd.read_csv(root + f"{graph_type}_relations.txt", sep = "\t", header = None)
         relations_file.columns = ["relation"]
         relations = relations_file["relation"].values
@@ -167,9 +165,15 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
             ent_embs = pk.load(f)
         with open(outdir_transe + "rel_embs", "rb") as f:
             rel_embs = pk.load(f)
-            
-        embeddings = ent_embs
-        vocab = embeddings.keys()
+
+        
+        
+        vocab = set(ent_embs.keys())
+        classes = [c for c in classes if c in vocab]
+        classes.sort()
+        class_to_id = {c: i for i, c in enumerate(classes)}
+        embeddings = np.array([ent_embs[c] for c in classes])
+        
         
         df = pd.read_csv(root+"train.csv", header = None)
         df.columns = ["source", "target", "label"]
@@ -251,7 +255,9 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         
         model = T2(len(classes), len(relations), dim = embedding_size)
         model.to(device)
-        model.ent_embeddings.weight.data = th.from_numpy(np.array(list(embeddings.values()))).to(device)
+        assert model.ent_embeddings.weight.data.shape == (len(classes), embedding_size)
+        
+        model.ent_embeddings.weight.data = th.from_numpy(embeddings).to(device)
         model.rel_embeddings.weight.data = th.from_numpy(np.array(list(rel_embs.values()))).to(device)
 
         optimizer = th.optim.Adam(model.parameters(), lr = lr)
