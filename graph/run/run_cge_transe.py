@@ -89,9 +89,10 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
 
     if graph_type == "owl2vecstar":
         graph_path = graph_prefix + "only.graph.projection.edgelist"
+        subclassof_rel = "http://www.w3.org/2000/01/rdf-schema#subClassOf"
     elif graph_type == "categorical":
         graph_path = graph_prefix + "cat.projection.edgelist"
-
+        subclassof_rel = "http://subclassof"
     outdir_transe = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}/"
     output_dir = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}_eps_{epochs_second}_lr_{lr}_margin_{margin}/"
 
@@ -184,7 +185,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
             source = row["source"]
             target = row["target"]
             label = row["label"]
-            relation = relation_to_id["http://subclassof"]
+            relation = relation_to_id[subclassof_rel]
 
             if source in vocab and target in vocab:
                 source = class_to_id[source]
@@ -227,7 +228,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         for i, row in tqdm(df.iterrows(), total = len(df)):
             source = row["source"]
             target = row["target"]
-            relation = relation_to_id["http://subclassof"]
+            relation = relation_to_id[subclassof_rel]
 
             if source in vocab and target in vocab:
                 source = class_to_id[source]
@@ -292,7 +293,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
 
         # Intersection of classes
         all_classes = np.array(list(class_to_id.values()))
-        relation = relation_to_id["http://subclassof"]
+        relation = relation_to_id[subclassof_rel]
         relations = np.array([relation] * len(all_classes))
 
         test_data = {"batch_t": th.tensor(all_classes, dtype = th.long, device=device), "batch_r": th.tensor(relations, dtype = th.long, device=device), "mode": "normal"}
