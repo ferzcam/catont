@@ -153,7 +153,8 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         classes = pd.read_csv(root + "classes.txt", sep = "\t", header = None)
         classes.columns = ["class"]
         classes = classes["class"].values
-        classes = sorted(classes)
+        classes.sort()
+        class_to_id = {c: i for i, c in enumerate(classes)}
 
         relations_file = pd.read_csv(root + f"{graph_type}_relations.txt", sep = "\t", header = None)
         relations_file.columns = ["relation"]
