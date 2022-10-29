@@ -154,14 +154,15 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
 
         vocab = embeddings.index_to_key
         print("Getting embeddings from Word2Vec model...")
-        for i, row in tqdm.tqdm(df.iterrows(), total = len(df)):
+        for i, row in tqdm(df.iterrows(), total = len(df)):
             source = row["source"]
             target = row["target"]
             label = row["label"]
 
             if source in vocab and target in vocab:
                 source_embs.append(embeddings[source])
-                target_embs.append(embeddings[target])
+ 
+               target_embs.append(embeddings[target])
                 labels.append(label)
                 found += 1
             else:
@@ -197,7 +198,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         vtarget_embs = []
     
         print("Getting embeddings from Word2Vec model...")
-        for i, row in tqdm.tqdm(vdf.iterrows(), total = len(vdf)):
+        for i, row in tqdm(vdf.iterrows(), total = len(vdf)):
             source = row["source"]
             target = row["target"]
         
@@ -233,7 +234,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         early_stop_limit = 3
         best_loss = float("inf")
         vloss_prev = float("inf")
-        for epoch in tqdm.tqdm(range(4000)):
+        for epoch in tqdm(range(4000)):
             model.train()
             #for i, (batch_data, batch_labels) in enumerate(dataloader):
             optimizer.zero_grad()
@@ -305,7 +306,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         
 
         ignored = 0
-        for i, row in tqdm.tqdm(df.iterrows(), total = len(df)):
+        for i, row in tqdm(df.iterrows(), total = len(df)):
             source = row["source"]
             target = row["target"]
 
