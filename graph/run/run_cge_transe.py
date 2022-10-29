@@ -131,8 +131,8 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         triples_factory = Edge.as_pykeen(edges, create_inverse_triples=True, entity_to_id=class_to_id, relation_to_id=relation_to_id)
         
 
-        if not os.path.exists(root + "cat_relations.txt"):
-            with open(root + "cat_relations.txt", "w") as f:
+        if not os.path.exists(root + f"{graph_type}_relations.txt"):
+            with open(root + f"{graph_type}_relations.txt", "w") as f:
                 for r in relations:
                     f.write(r + "\n")
         
@@ -155,7 +155,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         classes = classes["class"].values
         classes = sorted(classes)
 
-        relations_file = pd.read_csv(root + "cat_relations.txt", sep = "\t", header = None)
+        relations_file = pd.read_csv(root + f"{graph_type}_relations.txt", sep = "\t", header = None)
         relations_file.columns = ["relation"]
         relations = relations_file["relation"].values
         relations = sorted(relations)
