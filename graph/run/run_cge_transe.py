@@ -260,19 +260,19 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         model.ent_embeddings.weight.data = th.from_numpy(embeddings).to(device)
         model.rel_embeddings.weight.data = th.from_numpy(np.array(list(rel_embs.values()))).to(device)
 
-        optimizer = th.optim.SGD(model.parameters(), lr = lr)
+        optimizer = th.optim.Adam(model.parameters(), lr = lr)
 #        criterion = nn.MarginRankingLoss(margin = margin, reduction = "mean")
         criterion = nn.LogSigmoid()
         best_loss = float("inf")
         for epoch in tqdm(range(epochs_second)):
             model.train()
             
-            pos_dist  = model(positives).mean()
-            neg_dist  = model(negatives).mean()
+            pos_dist  = model(positives).sum()
+            neg_dist  = model(negatives).sum()
             targets = -th.ones_like(pos_dist).to(device)
             loss = - th.nn.functional.logsigmoid(pos_dist - neg_dist + margin).mean()
             #loss = -criterion(pos_dist-neg_dist)
-            loss = criterion(pos_dist, neg_dist, targets)
+            #loss = criterion(pos_dist, neg_dist, targets)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
