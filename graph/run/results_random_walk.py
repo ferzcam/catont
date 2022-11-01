@@ -15,7 +15,7 @@ def analyze_results(filepath):
     fmrr = df["fmrr"].max()
 
     print("Hits@1\tHits@5\tHits@10\tMRR\tFHits@1\tFHits@5\tFHits@10\tFMRR")
-    print(f"{hits1:.4f}\t{hits5:.4f}\t{hits10:.4f}\t{mrr:.4f}\t{fhits1:.4f}\t{fhits5:.4f}\t{fhits10:.4f}\t{fmrr:.4f}")
+    print(f"{hits1:.9f}\t{hits5:.9f}\t{hits10:.9f}\t{mrr:.9f}\t{fhits1:.9f}\t{fhits5:.9f}\t{fhits10:.9f}\t{fmrr:.9f}")
 
 
 

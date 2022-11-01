@@ -89,7 +89,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     if graph_type == "owl2vecstar":
         graph_path = graph_prefix + "only.graph.projection.edgelist"
     elif graph_type == "categorical":
-        graph_path = graph_prefix + "cat.projection.edgelist"
+        graph_path = graph_prefix + "cat.projection.bi.edgelist"
 
     outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
     output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_lr_{lr}/"
