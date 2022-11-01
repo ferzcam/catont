@@ -91,8 +91,8 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     elif graph_type == "categorical":
         graph_path = graph_prefix + "cat.projection.edgelist"
 
-    outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
-    output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_alpha_{alpha}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_lr_{lr}/"
+    outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
+    output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_lr_{lr}/"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -379,7 +379,7 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         fhits10 = fhits10/(len(df)-ignored)
         fmrr = fmrr/(len(df)-ignored)
         with open(root + f"{graph_type}_results", "a") as f:
-            f.write(f"{num_walks},{walk_length},{alpha},{epochs_w2v},{window_size},{embedding_size},{hits1},{hits5},{hits10},{mrr},{fhits1},{fhits5},{fhits10},{fmrr}\n")
+            f.write(f"{num_walks},{walk_length},{epochs_w2v},{window_size},{embedding_size},{lr},{hits1},{hits5},{hits10},{mrr},{fhits1},{fhits5},{fhits10},{fmrr}\n")
         
         print("Ignored: ", ignored)
         print(f"Hits@1\tHits@5\tHits@10\tMRR\tFHits@1\tFHits@5\tFHits@10\tFMRR")

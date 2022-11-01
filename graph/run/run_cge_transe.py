@@ -93,7 +93,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
     elif graph_type == "categorical":
         graph_path = graph_prefix + "cat.projection.edgelist"
         subclassof_rel = "http://subclassof"
-    outdir_transe = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}_lr_{lr}/"
+    outdir_transe = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}/"
     output_dir = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}_lr_{lr}_eps_{epochs_second}_margin_{margin}/"
 
     if not os.path.exists(outdir_transe):
