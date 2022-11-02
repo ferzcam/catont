@@ -20,57 +20,66 @@ size", "hits1", "hits5", "hits10", "mrr", "fhits1", "fhits5", "fhits10", "fmrr"]
     best_owl2vec = df_owl2vec.loc[df_owl2vec['hits1'].idxmax()]
     best_cat = df_cat.loc[df_cat['hits1'].idxmax()]
 
-    print("Best owl2vec hits1: " + str(best_owl2vec['hits1']))
-    print("Best cat hits1: " + str(best_cat['hits1']))
+    #print all the row at the best indices
+    print("Hits@1")
+    print(best_owl2vec)
+    print(best_cat)
 
     #Get best hits5
     best_owl2vec = df_owl2vec.loc[df_owl2vec['hits5'].idxmax()]
     best_cat = df_cat.loc[df_cat['hits5'].idxmax()]
 
-    print("Best owl2vec hits5: " + str(best_owl2vec['hits5']))
-    print("Best cat hits5: " + str(best_cat['hits5']))
+    print("Hits@5")
+    print(best_owl2vec)
+    print(best_cat)
 
     #Get best hits10
     best_owl2vec = df_owl2vec.loc[df_owl2vec['hits10'].idxmax()]
     best_cat = df_cat.loc[df_cat['hits10'].idxmax()]
 
-    print("Best owl2vec hits10: " + str(best_owl2vec['hits10']))
-    print("Best cat hits10: " + str(best_cat['hits10']))
+    print("Hits@10")
+    print(best_owl2vec)
+    print(best_cat)
 
     #Get best mrr
     best_owl2vec = df_owl2vec.loc[df_owl2vec['mrr'].idxmax()]
     best_cat = df_cat.loc[df_cat['mrr'].idxmax()]
 
-    print("Best owl2vec mrr: " + str(best_owl2vec['mrr']))
-    print("Best cat mrr: " + str(best_cat['mrr']))
-
+    print("MRR")
+    print(best_owl2vec)
+    print(best_cat)
+            
     #Get best fhits1
     best_owl2vec = df_owl2vec.loc[df_owl2vec['fhits1'].idxmax()]
     best_cat = df_cat.loc[df_cat['fhits1'].idxmax()]
 
-    print("Best owl2vec fhits1: " + str(best_owl2vec['fhits1']))
-    print("Best cat fhits1: " + str(best_cat['fhits1']))
+    print("Filtered Hits@1")
+    print(best_owl2vec)
+    print(best_cat)
 
     #Get best fhits5
     best_owl2vec = df_owl2vec.loc[df_owl2vec['fhits5'].idxmax()]
     best_cat = df_cat.loc[df_cat['fhits5'].idxmax()]
 
-    print("Best owl2vec fhits5: " + str(best_owl2vec['fhits5']))
-    print("Best cat fhits5: " + str(best_cat['fhits5']))
-
+    print("Filtered Hits@5")
+    print(best_owl2vec)
+    print(best_cat)
+    
     #Get best fhits10
     best_owl2vec = df_owl2vec.loc[df_owl2vec['fhits10'].idxmax()]
     best_cat = df_cat.loc[df_cat['fhits10'].idxmax()]
 
-    print("Best owl2vec fhits10: " + str(best_owl2vec['fhits10']))
-    print("Best cat fhits10: " + str(best_cat['fhits10']))
-
+    print("Filtered Hits@10")
+    print(best_owl2vec)
+    print(best_cat)
+            
     #Get best fmrr
     best_owl2vec = df_owl2vec.loc[df_owl2vec['fmrr'].idxmax()]
     best_cat = df_cat.loc[df_cat['fmrr'].idxmax()]
 
-    print("Best owl2vec fmrr: " + str(best_owl2vec['fmrr']))
-    print("Best cat fmrr: " + str(best_cat['fmrr']))
+    print("Filtered MRR")
+    print(best_owl2vec)
+    print(best_cat)
             
 if __name__ == "__main__":                                                                              
     case = sys.argv[1]                                                                                  
