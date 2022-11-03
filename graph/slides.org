@@ -5,18 +5,9 @@
 #+BEAMER_THEME: Madrid
 #+COLUMNS: %39ITEM %10BEAMER_ENV(Env) %9BEAMER_ENVARGS(Env Args) %4BEAMER_COL(Col) %10BEAMER_EXTRA(Extra)
 
-#+BEGIN_SRC emacs-lisp :exports results :results none
-  (defun org-beamer-bold-as-textbf (s backend info)
-    (replace-regexp-in-string "\\\\alert" "\\\\textbf" s))
-#+END_SRC
 
-#+BIND: org-export-filter-bold-functions (org-beamer-bold-as-textbf)
-
-
-
-
-#+title: Presentation
-#+date: <2022-10-29 Sat>
+#+title: Categorical representation of OWL ontologies
+#+date: <2022-11-03>
 #+author: Fernando Zhapa-Camacho
 #+email: fernando.zhapacamacho@kaust.edu.sa
 #+language: en
@@ -29,24 +20,54 @@
 * Introduction
 
 ** Motivation
-- Representing semantics on OWL ontologies
-- 
+- OWL ontologies represent complex domain knowledge
+- Representing semantics on OWL ontologies is useful for tasks such as ontology aligment, link prediction (in KG), etc. 
 
 
 * Method
 
-** CT
-
-
+** Category Theory
 ***                                                                :B_column:
     :PROPERTIES:
     :BEAMER_env: column
     :BEAMER_COL: 0.5
     :END:
 
+    \centering
+    $C \sqcap D$
+
     #+CAPTION: Categorical product
     #+NAME: fig.product
-    [[file:product.png]]
+    [[file:imgs/product.png]]
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.5
+    :END:
+    \centering
+    $C \sqcup D$
+    #+CAPTION: Categorical coproduct
+    #+NAME: fig.coproduct
+    [[file:imgs/coproduct.png]]
+
+* Experimental setup
+
+
+** Methodology
+- OWL2Vec* projection method (no literals)
+- Graph based on categorical diagrams
+
+- Random walks over graphs
+
+** Example: $C \sqsubseteq \exists R. D$
+
+- $C \sqsubseteq \Phi$
+- $C \sqsubseteq \exists R. D$
+- $\forall x (C(x) \to \exists y(R(x,y) \land D(y)))$
+
+
+
 
 ***                                                                :B_column:
     :PROPERTIES:
@@ -54,21 +75,59 @@
     :BEAMER_COL: 0.5
     :END:
     
-    #+CAPTION: Categorical coproduct
-    #+NAME: fig.product
-    [[file:coproduct.png]]
+    #+CAPTION: OWL2Vec*
+    #+ATTR_ORG: :width 200
+    #+ATTR_LATEX: :height 2cm
+    #+NAME: fig.owl2vec1
+    [[file:imgs/owl2vec1.jpg]]
+    
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.5
+    :END:
+    #+CAPTION: Categorical
+    #+ATTR_ORG: :width 200
+    #+ATTR_LATEX: :height 4cm
+    #+NAME: fig.cat1
+    [[file:imgs/cat1.jpg]]
 
-* Experimental setup
+** Example: $C \sqsubseteq \exists R. D$
+
+- $C \sqsubseteq \Phi$
+- $C \sqsubseteq \forall R. D$
+- $\forall x (C(x) \to \forall y (R(x,y) \to D(y)))$
+- $\forall x (C(x) \to \forall y ( \lnot R(x,y) \lor D(y)))$
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.5
+    :END:
+
+    #+CAPTION: OWL2Vec*
+    #+ATTR_ORG: :width 200
+    #+ATTR_LATEX: :height 2cm
+    #+NAME: fig.owl2vec2
+    [[file:imgs/owl2vec1.jpg]]  
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.5
+    :END:
+    #+CAPTION: Categorical
+    #+ATTR_ORG: :width 200
+    #+ATTR_LATEX: :height 4cm
+    #+NAME: fig.cat2
+    [[file:imgs/cat2.jpg]]
+
+
 
 ** Datasets:
 - Gene Ontology (subsumption test: $C \sqsubseteq D$)
 - Food Ontology (subsumption test: $C \sqsubseteq D$)
 - HeLis Ontology (membership test: $C(a)$)
-
-** Methodology
-- OWL2Vec* projection method (no literals)
-- Graph based on categorical diagrams
-
 
 
 ** Connected components on projected graphs
@@ -102,8 +161,8 @@
     :END:
 
     *HeLis Ontology*
-    - OWL2Vec*:
-    - Categorical: 
+    - OWL2Vec*: 6
+    - Categorical: 8
 
 
 * Results    
@@ -118,23 +177,26 @@
 | Categorical | *0.010738* | *0.011564*  | 0.011564   | *0.012318* |
 |             |            |             |            |            |
 
-**   
-|             |            | Helis      |            |            |
+** Embedding the graph using random walks
+|             |            | HeLis      |            |            |
 |-------------+------------+------------+------------+------------|
 |             | Hits@1     | Hits@5     | Hits@10    | MRR        |
 |-------------+------------+------------+------------+------------|
 | OWL2Vec*    | 0.069653   | 0.154073   | 0.220034   | 0.126230   |
 | Categorical | *0.073852* | *0.185282* | *0.285230* | *0.151987* |
 
-**   
+** Embedding the graph using random walks
 |-------------+------------+-------------+------------+------------|
-|             |            | GO (Hits@1) |            |            |
+|             |            | GO          |            |            |
 |-------------+------------+-------------+------------+------------|
 |             | Hits@1     | Hits@5      | Hits@10    | MRR        |
 |-------------+------------+-------------+------------+------------|
 | OWL2Vec*    | 0.001513   | *0.003868*  | *0.005129* | 0.003230   |
 | Categorical | *0.001766* | 0.003700    | 0.004793   | *0.003485* |
 |-------------+------------+-------------+------------+------------|
+
+** COMMENT
+
 |             |            | GO (MRR)    |            |            |
 |-------------+------------+-------------+------------+------------|
 |             | Hits@1     | Hits@5      | Hits@10    | MRR        |
@@ -146,6 +208,22 @@
 
 
      
+
+
+* Conclusion
+
+** Conclusion
+
+- Graph based on CT captures more complex axioms and 
+- Is able to differentiate among different operators (\forall, \exists, ...)
+
+** What's next?
+
+- Analyze integration of lexical embeddings
+
+** 
+   \centering
+   \LARGE Thank you
 
 ** COMMENT Embedding the graph using TransE
 
