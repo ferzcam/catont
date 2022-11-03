@@ -94,7 +94,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         graph_path = graph_prefix + "cat.projection.edgelist"
         subclassof_rel = "http://subclassof"
     outdir_transe = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}/"
-    output_dir = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}_eps_{epochs_second}_lr_{lr}_margin_{margin}/"
+    output_dir = root + "cat/" + f"graph_{graph_type}_epf_{epochs_first}_esize_{embedding_size}_lr_{lr}_eps_{epochs_second}_margin_{margin}/"
 
     if not os.path.exists(outdir_transe):
         os.makedirs(outdir_transe)
@@ -139,7 +139,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         
         pk_model = TransE(triples_factory=triples_factory, random_seed=seed, embedding_dim=embedding_size)
 
-        model = KGEModel(triples_factory, pk_model, epochs_first, batch_size=1024*4, device=device, lr=lr)
+        model = KGEModel(triples_factory, pk_model, epochs_first, batch_size=1024*8, device=device, lr=0.1)
         model.train()
         ent_embs = model.class_embeddings_dict
         rel_embs = model.object_property_embeddings_dict
@@ -261,16 +261,16 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
         model.rel_embeddings.weight.data = th.from_numpy(np.array(list(rel_embs.values()))).to(device)
 
         optimizer = th.optim.Adam(model.parameters(), lr = lr)
-#        criterion = nn.MarginRankingLoss(margin = 2.0, reduction = "mean")
+#        criterion = nn.MarginRankingLoss(margin = margin, reduction = "mean")
         criterion = nn.LogSigmoid()
         best_loss = float("inf")
         for epoch in tqdm(range(epochs_second)):
             model.train()
             
-            pos_dist  = model(positives)
-            neg_dist  = model(negatives)
+            pos_dist  = model(positives).sum()
+            neg_dist  = model(negatives).sum()
             targets = -th.ones_like(pos_dist).to(device)
-            loss = - th.nn.functional.logsigmoid(pos_dist.mean() - neg_dist.mean() + margin).mean()
+            loss = - th.nn.functional.logsigmoid(pos_dist - neg_dist + margin).mean()
             #loss = -criterion(pos_dist-neg_dist)
             #loss = criterion(pos_dist, neg_dist, targets)
             optimizer.zero_grad()
@@ -402,7 +402,7 @@ def main(case_study, graph_type, epochs_first, epochs_second, embedding_size, lr
             fmrr = fmrr/(len(df)-ignored)
 
             with open(root + f"{graph_type}_transe_results", "a") as f:
-                f.write(f"{epochs_first},{epochs_second},{embedding_size},{lr},{margin},{hits1},{hits5},{hits10},{mrr},{fhits1},{fhits5},{fhits10},{fmrr}\n")
+                f.write(f"{epochs_first},{embedding_size},{lr},{epochs_second},{margin},{hits1},{hits5},{hits10},{mrr},{fhits1},{fhits5},{fhits10},{fmrr}\n")
             
             print("Ignored: ", ignored)
             print(f"Hits@1\tHits@5\tHits@10\tMRR\tFHits@1\tFHits@5\tFHits@10\tFMRR")

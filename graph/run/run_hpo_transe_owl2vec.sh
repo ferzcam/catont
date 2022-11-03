@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH --partition=batch
-#SBATCH -J goowl2vectranse
-#SBATCH -o out/goowl2vectranse.%J.out
-#SBATCH -e err/goowl2vectranse.%J.err
+#SBATCH -J foodonowl2vectranse
+#SBATCH -o out/foodonowl2vectranse.%J.out
+#SBATCH -e err/foodonowl2vectranse.%J.err
 #SBATCH --mail-user=fernando.zhapacamacho@kaust.edu.sa
 #SBATCH --mail-type=ALL
 #SBATCH --time=20:00:00
@@ -20,7 +20,7 @@ function readJobArrayParams () {
 }
 
 function getJobArrayParams () {
-  local job_params_file="params_transe_only_train.txt"
+  local job_params_file="params_transe.txt"
 
   if [ -z "${SLURM_ARRAY_TASK_ID}" ] ; then
     echo "ERROR: Require job array.  Use '--array=#-#', or '--array=#,#,#' to specify."
@@ -39,5 +39,5 @@ function getJobArrayParams () {
 getJobArrayParams
 
 # Run the code
-python run_cge_transe.py -case go -g owl2vecstar -epf ${epochs_f} -esize ${emb_size} -eps ${epochs_s} -lr ${lr} -m ${margin} -dev cpu -train
+python run_cge_transe.py -case foodon -g owl2vecstar -epf ${epochs_f} -esize ${emb_size} -eps ${epochs_s} -lr ${lr} -m ${margin} -dev cpu -test
 
