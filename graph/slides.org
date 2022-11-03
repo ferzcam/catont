@@ -1,0 +1,160 @@
+#+startup: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+OPTIONS: H:2 toc:t num:t
+#+BEAMER_THEME: Madrid
+#+COLUMNS: %39ITEM %10BEAMER_ENV(Env) %9BEAMER_ENVARGS(Env Args) %4BEAMER_COL(Col) %10BEAMER_EXTRA(Extra)
+
+#+BEGIN_SRC emacs-lisp :exports results :results none
+  (defun org-beamer-bold-as-textbf (s backend info)
+    (replace-regexp-in-string "\\\\alert" "\\\\textbf" s))
+#+END_SRC
+
+#+BIND: org-export-filter-bold-functions (org-beamer-bold-as-textbf)
+
+
+
+
+#+title: Presentation
+#+date: <2022-10-29 Sat>
+#+author: Fernando Zhapa-Camacho
+#+email: fernando.zhapacamacho@kaust.edu.sa
+#+language: en
+#+select_tags: export
+#+exclude_tags: noexport
+#+creator: Emacs 27.1 (Org mode 9.3)
+
+
+
+* Introduction
+
+** Motivation
+- Representing semantics on OWL ontologies
+- 
+
+
+* Method
+
+** CT
+
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.5
+    :END:
+
+    #+CAPTION: Categorical product
+    #+NAME: fig.product
+    [[file:product.png]]
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.5
+    :END:
+    
+    #+CAPTION: Categorical coproduct
+    #+NAME: fig.product
+    [[file:coproduct.png]]
+
+* Experimental setup
+
+** Datasets:
+- Gene Ontology (subsumption test: $C \sqsubseteq D$)
+- Food Ontology (subsumption test: $C \sqsubseteq D$)
+- HeLis Ontology (membership test: $C(a)$)
+
+** Methodology
+- OWL2Vec* projection method (no literals)
+- Graph based on categorical diagrams
+
+
+
+** Connected components on projected graphs
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_COL: 0.33
+    :BEAMER_env: column
+    :END:
+
+    *Gene Ontology*
+
+    - OWL2Vec*: 275
+    - Categorical: 239
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.33
+    :END:
+
+    *Food Ontology*
+
+    - OWL2Vec*: 719
+    - Categorical: 559
+
+***                                                                :B_column:
+    :PROPERTIES:
+    :BEAMER_env: column
+    :BEAMER_COL: 0.33
+    :END:
+
+    *HeLis Ontology*
+    - OWL2Vec*:
+    - Categorical: 
+
+
+* Results    
+
+** Embedding the graph using random walks
+
+|             |            | FoodOn      |            |            |
+|-------------+------------+-------------+------------+------------|
+|             | Hits@1     | Hits@5      | Hits@10    | MRR        |
+|-------------+------------+-------------+------------+------------|
+| OWL2Vec*    | 0.001935   | 0.008018    | *0.031241* | 0.009610   |
+| Categorical | *0.010738* | *0.011564*  | 0.011564   | *0.012318* |
+|             |            |             |            |            |
+
+**   
+|             |            | Helis      |            |            |
+|-------------+------------+------------+------------+------------|
+|             | Hits@1     | Hits@5     | Hits@10    | MRR        |
+|-------------+------------+------------+------------+------------|
+| OWL2Vec*    | 0.069653   | 0.154073   | 0.220034   | 0.126230   |
+| Categorical | *0.073852* | *0.185282* | *0.285230* | *0.151987* |
+
+**   
+|-------------+------------+-------------+------------+------------|
+|             |            | GO (Hits@1) |            |            |
+|-------------+------------+-------------+------------+------------|
+|             | Hits@1     | Hits@5      | Hits@10    | MRR        |
+|-------------+------------+-------------+------------+------------|
+| OWL2Vec*    | 0.001513   | *0.003868*  | *0.005129* | 0.003230   |
+| Categorical | *0.001766* | 0.003700    | 0.004793   | *0.003485* |
+|-------------+------------+-------------+------------+------------|
+|             |            | GO (MRR)    |            |            |
+|-------------+------------+-------------+------------+------------|
+|             | Hits@1     | Hits@5      | Hits@10    | MRR        |
+|-------------+------------+-------------+------------+------------|
+| OWL2Vec*    | 0.000757   | *0.004204*  | *0.012612* | *0.004945* |
+| Categorical | *0.001766* | 0.003700    | 0.004793   | 0.003485   |
+
+
+
+
+     
+
+** COMMENT Embedding the graph using TransE
+
+|             |            | FoodOn     |            |            |
+|-------------+------------+------------+------------+------------|
+|             | Hits@1     | Hits@5     | Hits@10    | MRR        |
+|-------------+------------+------------+------------+------------|
+| OWL2Vec*    | *0.000829* | *0.002212* | *0.003318* | *0.001959* |
+| Categorical | 0.000000   | 0.001101   | 0.001377   | 0.000731   |
+
+Not better than the Random Walk version
+
