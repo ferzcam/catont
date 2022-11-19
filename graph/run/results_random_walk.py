@@ -3,8 +3,12 @@ import sys
 
 def analyze_results(filepath):
     df = pd.read_csv(filepath, header=None)
-    df.columns = ["num_walks", "walk_length", "alpha", "w2v_epochs", "window_size", "embedding_size", "hits1", "hits5", "hits10", "mrr", "fhits1", "fhits5", "fhits10", "fmrr"]
+    cols = df.shape[1]
 
+    if cols == 14:
+        df.columns = ["num_walks", "walk_length", "alpha", "w2v_epochs", "window_size", "embedding_size", "hits1", "hits5", "hits10", "mrr", "fhits1", "fhits5", "fhits10", "fmrr"]
+    elif cols == 15:
+        df.columns = ["num_walks", "walk_length", "alpha", "w2v_epochs", "window_size", "embedding_size", "mlp_epochs", "hits1", "hits5", "hits10", "mrr", "fhits1", "fhits5", "fhits10", "fmrr"]
     hits1 = df["hits1"].max()
     hits5 = df["hits5"].max()
     hits10 = df["hits10"].max()

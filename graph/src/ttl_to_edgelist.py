@@ -12,10 +12,20 @@ def ttl_to_edgelist(onto_file):
 
     with open(onto_file.replace('.ttl', '.edgelist'), 'w') as f:
         for s, p, o in tqdm.tqdm(g, total=len(g)):
-            if " " in s or " " in o:
+            if isinstance(s, rdflib.term.Literal):
                 continue
-            if "oboInOwl" in p or "annotated" in p:
+            if isinstance(o, rdflib.term.Literal):
                 continue
+            #if " " in s or " " in o:
+            #    continue
+            #if "http://langual" in s or "http://langual" in o:
+            #    continue
+            #if "oboInOwl" in p or "annotated" in p or "label" in p:
+            #    continue
+            #if not s.startswith("http") and not len(s) > 20:
+            #    continue
+            #if not o.startswith("http") and not len(o) > 20:
+            #    continue
             f.write(str(s) + '\t' + str(p) + '\t' + str(o) + '\n')
 
 if __name__ == '__main__':
