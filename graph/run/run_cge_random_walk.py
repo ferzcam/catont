@@ -58,8 +58,8 @@ class SubsumptionDataset(Dataset):
 ROOT_DIR = "../case_studies/"
 
 @ck.command()
-@ck.option('--case-study', '-case', type = ck.Choice(["go", "foodon", "helis"]))
-@ck.option('--graph-type', '-g', type = ck.Choice(["owl2vecstar", "categorical"]))
+@ck.option('--case-study', '-case', type = ck.Choice(["go", "foodon", "helis", "goplus"]))
+@ck.option('--graph-type', '-g', type = ck.Choice(["owl2vecstar", "categorical", "rdf"]))
 @ck.option('--num-walks', '-nwalks', type = int, default = 20)
 @ck.option('--walk-length', '-wlen', type = int, default = 5)
 @ck.option('--alpha', '-alpha', type = float, default = 0.1, help = "Probability of restart random walk")
@@ -86,22 +86,19 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     elif case_study == "helis":
         root = ROOT_DIR + "helis_membership/"
         graph_prefix = root + "helis_v1.00.train."
+    elif case_study == "goplus":
+        root = ROOT_DIR + "go_plus_subsumption/"
+        graph_prefix = root + "go.plus.train."
     else:
         raise ValueError(f"Invalid case study: {case_study}")
 
     if graph_type == "owl2vecstar":
         graph_path = graph_prefix + "only.graph.projection.edgelist"
     elif graph_type == "categorical":
-        if case_study == "go":
-            graph_path = graph_prefix + "cat.projection.bi.edgelist"
-        else:
-            graph_path = graph_prefix + "cat.projection.edgelist"
-
-    word2vec_path = None
-    if test_with_lexical:
-        word2vec_path = graph_prefix + "word2vec.model"
-    
-            
+        graph_path = graph_prefix + "cat.projection.edgelist"
+    elif graph_type == "rdf":
+        graph_path = graph_prefix + "rdf.edgelist"
+        
     outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
     output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_lr_{lr}/"
 
@@ -131,6 +128,9 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
     if train and not os.path.exists(w2v_outfile) and not os.path.exists(walk_outfile):
         graph = pd.read_csv(graph_path, sep = "\t", header = None)
         graph.columns = ["h", "r", "t"]
+        print(f"Number of rows:\t {len(graph)}")
+        graph.dropna(axis=0, inplace=True)
+        print(f"Number of rows (no NaN):\t {len(graph)}")
         edges = [Edge(h, r, t) for h, r, t in graph.values]
                                         
         walker = DeepWalk(num_walks, walk_length, alpha, outfile = walk_outfile, workers = num_workers)

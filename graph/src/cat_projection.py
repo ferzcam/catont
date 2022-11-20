@@ -60,14 +60,13 @@ class CategoricalProjector():
         self.union_virtual_nodes_count += 1
         return "http://mowl/union_{}".format(self.union_virtual_nodes_count)
 
-    def project(self, ontology):
+    def project(self, ontology, identity = False, composition = False):
         """Project an ontology into a graph using categorical diagrams."""
 
         all_axioms = ontology.getAxioms(True)
         graph = []
         for axiom in tqdm(all_axioms, total = len(all_axioms)):
             graph += self._process_axiom(axiom)
-
 
         print("intersection_virtual_nodes_count: {}".format(self.intersection_virtual_nodes_count))
         print("union_virtual_nodes_count: {}".format(self.union_virtual_nodes_count))
@@ -76,6 +75,25 @@ class CategoricalProjector():
         print("negation_virtual_nodes_count: {}".format(self.negation_virtual_nodes_count))
         print("class_assertion_ignored: {}".format(self.class_assertion_ignored))
         print("object_property_assertion_ignored: {}".format(self.object_property_assertion_ignored))
+
+        if identity:
+            raise NotImplementedError("Identity projection not implemented yet.")
+
+        if composition:
+            node_to_neighbours = {}
+            for edge in graph:
+                if edge.src not in node_to_neighbours:
+                    node_to_neighbours[edge.src] = []
+                node_to_neighbours[edge.src].append((edge.rel, edge.dst))
+
+            for node in node_to_neighbours:
+                neighbours = node_to_neighbours[node]
+                for neigh_1, rel_1 in neighbours:
+                    if neigh_1 in node_to_neighbours:
+                        for neigh_2, rel_2 in node_to_neighbours[neigh_1]:
+                            graph.append(Edge(node, rel_1 + "_o_" + rel_2, neigh_2))
+                
+        
         return graph
 
 
@@ -648,22 +666,20 @@ def check_entity_format(entity):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        ontology_file = sys.argv[1]
-        bidirectional_taxonomy = False
-    if len(sys.argv) == 3:
-        ontology_file = sys.argv[1]
-        bidirectional_taxonomy = sys.argv[2]
-        
+    
+    ontology_file = sys.argv[1]
+    composition = False
+    if len(sys.argv) > 2:
+        composition = sys.argv[2]
+
     ds = PathDataset(ontology_file)
     projector = CategoricalProjector(bidirectional_taxonomy=bidirectional_taxonomy)
     graph = projector.project(ds.ontology)
 
-    if bidirectional_taxonomy:
-        outfile = ontology_file.replace(".owl", ".cat.projection.bi.edgelist")
+    if composition:
+        outfile = ontology_file.replace(".owl", ".cat_comp.projection.edgelist")
     else:
         outfile = ontology_file.replace(".owl", ".cat.projection.edgelist")
-        
     print(f"Graph computed. Writing into file: {outfile}")
 
     with open(outfile, "w") as f:
