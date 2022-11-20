@@ -10,7 +10,8 @@ from mowl.owlapi.defaults import BOT, TOP
 from org.semanticweb.owlapi.model import OWLObjectIntersectionOf, OWLObjectSomeValuesFrom, \
     OWLObjectProperty, OWLObjectAllValuesFrom, OWLObjectComplementOf, OWLObjectUnionOf,\
     OWLObjectExactCardinality, OWLDataHasValue, OWLDataSomeValuesFrom, OWLObjectMinCardinality, \
-    OWLObjectHasSelf
+    OWLObjectHasSelf, OWLNamedIndividual, OWLClassAssertionAxiom, OWLObjectPropertyAssertionAxiom
+
 from org.semanticweb.owlapi.model.parameters import Imports
 from tqdm import tqdm
 
@@ -20,7 +21,8 @@ from tqdm import tqdm
 
 class CategoricalProjector():
 
-    def __init__(self):
+    def __init__(self, bidirectional_taxonomy = False):
+        self.bidirectional_taxonomy = bidirectional_taxonomy
         self.adapter = OWLAPIAdapter()
         self.ont_manager = self.adapter.owl_manager
         self.data_factory = self.adapter.data_factory
@@ -30,6 +32,9 @@ class CategoricalProjector():
         self.universal_virtual_nodes_count = 0
         self.negation_virtual_nodes_count = 0
 
+        self.class_assertion_ignored = 0
+        self.object_property_assertion_ignored = 0
+        
     def get_intersection_virtual_node(self):
         """Return a new virtual node for an intersection concept description."""
         self.intersection_virtual_nodes_count += 1
@@ -69,7 +74,8 @@ class CategoricalProjector():
         print("existential_virtual_nodes_count: {}".format(self.existential_virtual_nodes_count))
         print("universal_virtual_nodes_count: {}".format(self.universal_virtual_nodes_count))
         print("negation_virtual_nodes_count: {}".format(self.negation_virtual_nodes_count))
-        
+        print("class_assertion_ignored: {}".format(self.class_assertion_ignored))
+        print("object_property_assertion_ignored: {}".format(self.object_property_assertion_ignored))
         return graph
 
 
@@ -86,10 +92,18 @@ class CategoricalProjector():
             return self._process_equivalentclasses(axiom)
         elif axiom_type == "DisjointClasses":
             return self._process_disjointness(axiom)
+        elif axiom_type == "ClassAssertion":
+            return self._process_class_assertion(axiom)
+        elif axiom_type == "ObjectPropertyAssertion":
+            return self._process_object_property_assertion(axiom)
         elif axiom_type in IGNORED_AXIOM_TYPES:
             #Ignore these types of axioms
             return []
         else:
+            if axiom_type == "ClassAssertion":
+                self.class_assertion_ignored += 1
+            elif axiom_type == "ObjectPropertyAssertion":
+                self.object_property_assertion_ignored += 1
             print(f"process_axiom: Unknown axiom type: {axiom_type}")
             return []
 
@@ -99,7 +113,7 @@ class CategoricalProjector():
 
         edges = []
         exprs = axiom.getClassExpressionsAsList()
-        head_class = None
+        head_class = exprs[0]
         for expr in exprs:
             if isinstance(expr, OWLClass):
                 head_class = expr
@@ -111,57 +125,80 @@ class CategoricalProjector():
             if expr == head_class:
                 continue
             edges += self._process_subclassof(head_class, expr)
-            edges += self._process_subclassof_inverted(expr, head_class)
+            edges += self._process_subclassof(expr, head_class)
         if edges == []:
             print(f"No edges found for EquivalentClasses axiom: {axiom}")
         return edges
 
 
-    def _process_subclassof(self, sub_class: OWLClass, super_class):
+    def _process_subclassof(self, sub_class, super_class):
         """Process a SubClassOf axiom and return a list of edges."""
+
+        sub_edges = []
+        super_edges = []
+
+        ignored_explicit1 = ignored_explicit2 = False
+        
+        if not isinstance(sub_class, OWLClass):
+            virtual_node1, sub_edges, ignored_explicit1 = self._process_expression_and_get_virtual_node(sub_class)
+            sub_class = virtual_node1
+
+        if not isinstance(super_class, OWLClass):
+            virtual_node2, super_edges, ignored_explicit2 = self._process_expression_and_get_virtual_node(super_class)
+            super_class = virtual_node2
+
+        if ignored_explicit1 or ignored_explicit2:
+            return []
+        
+        edges = self._subclassMorphism(sub_class, super_class)
+        edges += sub_edges
+        edges += super_edges
+
+        
+        if edges == []:
+            print(f"No edges found for SubClassOf axiom: {sub_class} {super_class}")
+
+        return edges
+
+    def _process_expression_and_get_virtual_node(self, expression):
+
+        if ax.is_owl_class(expression):
+            raise ValueError("Expression is an OWLClass. It should be processed directly.")
+
         explicitely_ignored = False
         edges = []
-        if not ax.is_owl_class(sub_class):
-            edges += self._process_subclassof_complex_subclass(sub_class, super_class)
-
-        elif ax.is_owl_class(super_class):
-            edges += [self._subclassMorphism(sub_class, super_class)]
-
-        elif ax.is_owl_object_intersection_of(super_class):
+        virtual_node = None
+                                
+        if ax.is_owl_object_intersection_of(expression):
             virtual_node = self.get_intersection_virtual_node()
-            edges.append(self._subclassMorphism(sub_class, virtual_node))
-            edges += self._process_intersectionof(super_class, virtual_node)
+            edges = self._process_intersectionof(expression, virtual_node)
 
-        elif ax.is_owl_object_union_of(super_class):
+        elif ax.is_owl_object_union_of(expression):
             virtual_node = self.get_union_virtual_node()
-            edges.append(self._subclassMorphism(sub_class, virtual_node))
-            edges += self._process_unionof(super_class, virtual_node)
+            edges += self._process_unionof(expression, virtual_node)
 
-        elif ax.is_owl_object_some_values_from(super_class):
+        elif ax.is_owl_object_some_values_from(expression):
             virtual_node = self.get_existential_virtual_node()
-            edges.append(self._subclassMorphism(sub_class, virtual_node))
-            edges += self._process_somevaluesfrom(super_class, virtual_node)
+            edges += self._process_somevaluesfrom(expression, virtual_node)
 
-        elif ax.is_owl_object_all_values_from(super_class):
+        elif ax.is_owl_object_all_values_from(expression):
             virtual_node = self.get_universal_virtual_node()
-            edges.append(self._subclassMorphism(sub_class, virtual_node))
-            edges += self._process_allvaluesfrom(super_class, virtual_node)
+            edges += self._process_allvaluesfrom(expression, virtual_node)
 
-        elif ax.is_owl_object_complement_of(super_class):
-            virtual_node_neg = self.get_negation_virtual_node()
-            edges.append(self._subclassMorphism(sub_class, virtual_node_neg))
-            edges += self._process_negationof(super_class, virtual_node_neg)
+        elif ax.is_owl_object_complement_of(expression):
+            virtual_node = self.get_negation_virtual_node()
+            edges += self._process_negationof(expression, virtual_node)
 
-        elif isinstance(super_class, (OWLObjectExactCardinality, OWLObjectMinCardinality, OWLObjectHasSelf)):
+        elif isinstance(expression, (OWLObjectExactCardinality, OWLObjectMinCardinality, OWLObjectHasSelf)):
             explicitely_ignored = True
             #Ignore cardinality restrictions for now
             pass
         else:
-            print("process_subclassof: Unknown super class type: {}".format(super_class))
+            print("process_subclassof: Unknown super class type: {}".format(expression))
         
         if edges == [] and not explicitely_ignored:
-            print(f"No edges found for SubClassOf axiom: {sub_class} {super_class}")
-        return edges
+            print(f"No edges found for expression: {expression}")
+        return virtual_node, edges, explicitely_ignored
 
     def _process_subclassof_complex_subclass(self, sub_class, super_class):
         """Process a SubClassOf axiom with a complex subclass and return a list of edges."""
@@ -192,18 +229,18 @@ class CategoricalProjector():
         edges = []
 
         if isinstance(sub_class, OWLClass):
-            edges +=[]# [self._subclassMorphism(sub_class, super_class)]
+            edges +=[]# self._subclassMorphism(sub_class, super_class)
         elif isinstance(sub_class, OWLObjectIntersectionOf):
             virtual_node = self.get_intersection_virtual_node()
-            edges.append(self._subclassMorphism(virtual_node, super_class))
+            edges += self._subclassMorphism(virtual_node, super_class)
             edges += self._process_intersectionof(sub_class, virtual_node)
         elif isinstance(sub_class, OWLObjectSomeValuesFrom):
             virtual_node = self.get_existential_virtual_node()
-            edges.append(self._subclassMorphism(virtual_node, super_class))
+            edges += self._subclassMorphism(virtual_node, super_class)
             edges += self._process_somevaluesfrom(sub_class, virtual_node)
         elif isinstance(sub_class, OWLObjectUnionOf):
             virtual_node = self.get_union_virtual_node()
-            edges.append(self._subclassMorphism(virtual_node, super_class))
+            edges += self._subclassMorphism(virtual_node, super_class)
             edges += self._process_unionof(sub_class, virtual_node)
         else:
             print(f"process_subclassof_inverted: Unknown sub class type: {sub_class}. Type: {type(sub_class)}")
@@ -216,7 +253,7 @@ class CategoricalProjector():
         """Process a disjointness axiom"""
         edges = []
         exprs = axiom.getClassExpressionsAsList()
-        head_class = None
+        head_class = exprs[0]
         for expr in exprs:
             if isinstance(expr, OWLClass):
                 head_class = expr
@@ -238,9 +275,18 @@ class CategoricalProjector():
         """Process a disjointness axiom between two classes"""
         edges = []
 
-        edges.append(self._subclassMorphism(virtual_node, BOT))
-        edges.append(self._projectionMorphism(virtual_node, class1))
+        edges += self._subclassMorphism(virtual_node, BOT)
 
+        if isinstance(class1, OWLClass):
+            edges.append(self._projectionMorphism(virtual_node, class1))
+        elif isinstance(class1, OWLObjectSomeValuesFrom):
+            virtual_node1 = self.get_existential_virtual_node()
+            edges.append(self._projectionMorphism(virtual_node, virtual_node1))
+            edges += self._process_somevaluesfrom(class1, virtual_node1)
+        else:
+            print("process_disjoint_pairwise: Unknown class1 type: {}".format(class1))
+            
+            
         if isinstance(class2, OWLClass):
             edges.append(self._projectionMorphism(virtual_node, class2))
         elif isinstance(class2, OWLObjectSomeValuesFrom):
@@ -252,7 +298,7 @@ class CategoricalProjector():
             edges.append(self._projectionMorphism(virtual_node, virtual_node2))
             edges += self._process_unionof(class2, virtual_node2)
         else:
-            print("process_disjoint_pairwise: Unknown class type: {}".format(class2))
+            print("process_disjoint_pairwise: Unknown class2 type: {}".format(class2))
 
         if edges == []:
             print(f"No edges found for DisjointClasses axiom: {class1} {class2}")
@@ -381,10 +427,10 @@ class CategoricalProjector():
             virtual_node_int = self.get_intersection_virtual_node() 
             edges.append(self._projectionMorphism(virtual_node_int, expr))
             edges.append(self._projectionMorphism(virtual_node_int, virtual_node))
-            edges.append(self._subclassMorphism(virtual_node_int, BOT))
+            edges += self._subclassMorphism(virtual_node_int, BOT)
  
             virtual_node_union = self.get_union_virtual_node()
-            edges.append(self._subclassMorphism(TOP, virtual_node_union))
+            edges += self._subclassMorphism(TOP, virtual_node_union)
             edges.append(self._injectionMorphism(expr, virtual_node_union))
             edges.append(self._injectionMorphism(virtual_node, virtual_node_union))
         elif isinstance(expr, OWLObjectSomeValuesFrom):
@@ -394,8 +440,8 @@ class CategoricalProjector():
             #TODO: assert virtual node exist already exists
             edges.append(self._projectionMorphism(virtual_node_int, virtual_node_exist))
             edges.append(self._projectionMorphism(virtual_node_int, virtual_node))
-            edges.append(self._subclassMorphism(virtual_node_int, BOT))
-            edges.append(self._subclassMorphism(TOP, virtual_node_union))
+            edges += self._subclassMorphism(virtual_node_int, BOT)
+            edges += self._subclassMorphism(TOP, virtual_node_union)
             edges.append(self._injectionMorphism(virtual_node_exist, virtual_node_union))
             edges.append(self._injectionMorphism(virtual_node, virtual_node_union))
         else:
@@ -416,7 +462,34 @@ class CategoricalProjector():
  #       }
  #   }
 
+ ##### ASSERTION AXIOMS #####
 
+    def _process_class_assertion(self, class_assertion: OWLClassAssertionAxiom):
+        edges = []
+        individual = class_assertion.getIndividual()
+        cls = class_assertion.getClassExpression()
+        if isinstance(cls, OWLClass):
+            edges.append(self._membershipMorphism(individual, cls))
+        else:
+            print(f"process_class_assertion: Unknown class expression type: {cls}")
+        return edges
+
+
+    def _process_object_property_assertion(self, object_property_assertion: OWLObjectPropertyAssertionAxiom):
+        edges = []
+        subject = object_property_assertion.getSubject()
+        property_ = object_property_assertion.getProperty()
+        obj = object_property_assertion.getObject()
+
+        if not isinstance(subject, OWLNamedIndividual):
+            print(f"process_object_property_assertion: Unknown subject type: {subject}")
+        if not isinstance(obj, OWLNamedIndividual):
+            print(f"process_object_property_assertion: Unknown object type: {obj}")
+
+        if not isinstance(property_, OWLObjectProperty):
+            print(f"process_object_property_assertion: Unknown property type: {property_}")
+        edges.append(self._propertyAssertionMorphism(subject, property_, obj))
+        return edges
 ####################### MORPHISMS ###########################
     def _projectionMorphism(self, src, dst):
         if isinstance(src, OWLClass):
@@ -440,6 +513,48 @@ class CategoricalProjector():
         dst = check_entity_format(dst)
         return Edge(src, "http://projects", dst)
 
+    def _membershipMorphism(self, src, dst):
+        if isinstance(src, OWLNamedIndividual):
+            src = str(src.toStringID())
+        else:
+            if not isinstance(src, str):
+                raise TypeError(f"Unknown source type: {src}. Type: {type(src)}")
+
+        if isinstance(dst, OWLClass):
+            dst = str(dst.toStringID())
+        else:
+            if not isinstance(dst, str):
+                raise TypeError(f"Unknown type for dst: {dst}")
+
+        src = check_entity_format(src)
+        dst = check_entity_format(dst)
+
+        return Edge(src, "http://member", dst)
+
+    def _propertyAssertionMorphism(self, src, property_, dst):
+        if isinstance(src, OWLNamedIndividual):
+            src = str(src.toStringID())
+        else:
+            if not isinstance(src, str):
+                raise TypeError(f"Unknown source type: {src}. Type: {type(src)}")
+
+        if isinstance(dst, OWLNamedIndividual):
+            dst = str(dst.toStringID())
+        else:
+            if not isinstance(dst, str):
+                raise TypeError(f"Unknown type for dst: {dst}")
+
+        if isinstance(property_, OWLObjectProperty):
+            property_ = str(property_.toString())[1:-1]
+        else:
+            if not isinstance(property_, str):
+                raise TypeError(f"Unknown type for property_: {property_}")
+
+        src = check_entity_format(src)
+        dst = check_entity_format(dst)
+        property_ = check_entity_format(property_)
+        return Edge(src, property_, dst)
+
     def _subclassMorphism(self, src, dst):
         if isinstance(src, OWLClass):
             src = str(src.toStringID())
@@ -451,6 +566,7 @@ class CategoricalProjector():
 
         if isinstance(dst, OWLClass):
             dst = str(dst.toStringID())
+            
         elif isinstance(dst, OWLObjectProperty):
             dst = str(dst.toString())[1:-1]
         else:
@@ -459,7 +575,11 @@ class CategoricalProjector():
 
         src = check_entity_format(src)
         dst = check_entity_format(dst)
-        return Edge(src, "http://subclassof", dst)
+        
+        if self.bidirectional_taxonomy:
+            return [Edge(src, "http://subclassof", dst), Edge(dst, "http://superclassof", src)]
+        else:
+            return [Edge(src, "http://subclassof", dst)]
 
     def _implicationMorphism(self, src, dst):
 
@@ -528,13 +648,22 @@ def check_entity_format(entity):
 
 
 if __name__ == "__main__":
-    ontology_file = sys.argv[1]
-
+    if len(sys.argv) == 2:
+        ontology_file = sys.argv[1]
+        bidirectional_taxonomy = False
+    if len(sys.argv) == 3:
+        ontology_file = sys.argv[1]
+        bidirectional_taxonomy = sys.argv[2]
+        
     ds = PathDataset(ontology_file)
-    projector = CategoricalProjector()
+    projector = CategoricalProjector(bidirectional_taxonomy=bidirectional_taxonomy)
     graph = projector.project(ds.ontology)
 
-    outfile = ontology_file.replace(".owl", ".cat.projection.edgelist")
+    if bidirectional_taxonomy:
+        outfile = ontology_file.replace(".owl", ".cat.projection.bi.edgelist")
+    else:
+        outfile = ontology_file.replace(".owl", ".cat.projection.edgelist")
+        
     print(f"Graph computed. Writing into file: {outfile}")
 
     with open(outfile, "w") as f:

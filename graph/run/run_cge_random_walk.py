@@ -42,6 +42,7 @@ class MLP(nn.Module):
         x = self.fc1(x).squeeze()
         return th.sigmoid(x)
 
+class MLP()
 class SubsumptionDataset(Dataset):
     def __init__(self, data, labels):
         #assert len(data) == len(labels)
@@ -70,8 +71,9 @@ ROOT_DIR = "../case_studies/"
 @ck.option('--device', '-dev', type = ck.Choice(["cpu", "cuda"]), default = "cpu")
 @ck.option('--train', '-train', is_flag = True)
 @ck.option('--test', '-test', is_flag = True)
+@ck.option('--test-with-lexical", -testlex', is_flag = True)
 
-def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, lr, device, train, test):
+def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, window_size, num_workers, embedding_size, lr, device, train, test, test_with_lexical):
 
     seed_everything(42)
     
@@ -94,6 +96,11 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
             graph_path = graph_prefix + "cat.projection.bi.edgelist"
         else:
             graph_path = graph_prefix + "cat.projection.edgelist"
+
+    word2vec_path = None
+    if test_with_lexical:
+        word2vec_path = graph_prefix + "word2vec.model"
+    
             
     outdir_walks_and_w2v = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}/"
     output_dir = root + "cat/" + f"graph_{graph_type}_nwalks_{num_walks}_wlen_{walk_length}_epw2v_{epochs_w2v}_wsize_{window_size}_esize_{embedding_size}_lr_{lr}/"
@@ -157,6 +164,10 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
         labels = []
 
         vocab = embeddings.index_to_key
+
+        with open("vocab.txt", "w") as f:
+            for v in vocab:
+                f.write(f"{v}\n")
         print("Getting embeddings from Word2Vec model...")
         for i, row in tqdm(df.iterrows(), total = len(df)):
             source = row["source"]
@@ -211,6 +222,11 @@ def main(case_study, graph_type, num_walks, walk_length, alpha, epochs_w2v, wind
                 vtarget_embs.append(embeddings[target])
                 found += 1
             else:
+                if not source in vocab:
+                    print("Source not in vocab: ", source)
+                if not target in vocab:
+                    print("Target not in vocab: ", target)
+
                 not_found += 1
 
         print("Number of validation triples found: ", found)
