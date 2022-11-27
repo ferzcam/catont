@@ -21,8 +21,7 @@ from tqdm import tqdm
 
 class CategoricalProjector():
 
-    def __init__(self, bidirectional_taxonomy = False):
-        self.bidirectional_taxonomy = bidirectional_taxonomy
+    def __init__(self):
         self.adapter = OWLAPIAdapter()
         self.ont_manager = self.adapter.owl_manager
         self.data_factory = self.adapter.data_factory
@@ -80,6 +79,7 @@ class CategoricalProjector():
             raise NotImplementedError("Identity projection not implemented yet.")
 
         if composition:
+            print("Computing composition...")
             node_to_neighbours = {}
             for edge in graph:
                 if edge.src not in node_to_neighbours:
@@ -88,10 +88,13 @@ class CategoricalProjector():
 
             for node in node_to_neighbours:
                 neighbours = node_to_neighbours[node]
-                for neigh_1, rel_1 in neighbours:
+                for rel_1, neigh_1 in neighbours:
                     if neigh_1 in node_to_neighbours:
-                        for neigh_2, rel_2 in node_to_neighbours[neigh_1]:
-                            graph.append(Edge(node, rel_1 + "_o_" + rel_2, neigh_2))
+                        for rel_2, neigh_2 in node_to_neighbours[neigh_1]:
+                            if rel_1 == rel_2:
+                                graph.append(Edge(node, rel_1, neigh_2))
+                            else:
+                                graph.append(Edge(node, rel_1 + " " + rel_2, neigh_2))
                 
         
         return graph
@@ -594,10 +597,7 @@ class CategoricalProjector():
         src = check_entity_format(src)
         dst = check_entity_format(dst)
         
-        if self.bidirectional_taxonomy:
-            return [Edge(src, "http://subclassof", dst), Edge(dst, "http://superclassof", src)]
-        else:
-            return [Edge(src, "http://subclassof", dst)]
+        return [Edge(src, "http://subclassof", dst)]
 
     def _implicationMorphism(self, src, dst):
 
@@ -673,8 +673,8 @@ if __name__ == "__main__":
         composition = sys.argv[2]
 
     ds = PathDataset(ontology_file)
-    projector = CategoricalProjector(bidirectional_taxonomy=bidirectional_taxonomy)
-    graph = projector.project(ds.ontology)
+    projector = CategoricalProjector()
+    graph = projector.project(ds.ontology, composition=composition)
 
     if composition:
         outfile = ontology_file.replace(".owl", ".cat_comp.projection.edgelist")
