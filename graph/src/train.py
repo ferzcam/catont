@@ -20,7 +20,7 @@ def train(graph, graph_method, dataset, out_model_file = None, emb_size = None, 
     :param projector: Projector to use
     :param dataset: mOWL dataset to use
     """
-    pykeen_triples = Edge.as_pykeen(graph)
+    pykeen_triples = Edge.as_pykeen(graph, create_inverse_triples=True)
 
     candidate_embedding_dim = 2*len(graph)//(len(dataset.classes.as_str) + len(dataset.object_properties.as_str))
     embedding_dim = emb_size# max(20, candidate_embedding_dim)
@@ -46,62 +46,63 @@ def train(graph, graph_method, dataset, out_model_file = None, emb_size = None, 
 
     return model
 
-def generate_scores(model, dataset, out_file):
+def generate_scores(model, onto, eval_results_file):
 
     model.load_best_model()
-    projector = TaxonomyWithRelsProjector(taxonomy = True, relations = [])
-    training_graph = projector.project(dataset.ontology)
-    testing_graph = projector.project(dataset.testing)
 
     entities_to_id = {k:v for k, v in model.triples_factory.entity_to_id.items() if not k.startswith("http://mowl")}
     relations_to_id = model.triples_factory.relation_to_id
 
 
-    positive_triples = []
+    with open(f"../data/positives_{onto}.txt", "r") as f:
 
-    scores = []
-    for edge in tqdm(testing_graph, total = len(testing_graph)):
-        label = 1
-        if not edge.rel == "http://subclassof":
-            print(f"Ignoring edge: {edge.astuple()}")
-            continue
+        with open(eval_results_file, "w") as f_out:
+            n_pos = 0
+            for line in f.readlines():
+            
+                src, dst = line.strip().split("\t")
+                if not src in entities_to_id:
+                    print(f"Source entity {src} not in training set")
+                    continue
+                if not dst in entities_to_id:
+                    print(f"Destination entity {dst} not in training set")
+                    continue
+                n_pos += 1
+                src = entities_to_id[src]
+                rel = relations_to_id["http://subclassof"]
+                dst = entities_to_id[dst]
 
-        if not edge.src in set(entities_to_id.keys()):
-            print(f"Source entity {edge.src} not in training set")
-            continue
-        if not edge.dst in set(entities_to_id.keys()):
-            print(f"Destination entity {edge.dst} not in training set")
-            continue
+                point = [src, rel, dst]
+                point = th.tensor(point, dtype=th.long, device=model.device).unsqueeze(0)
+                pos_score = th.sigmoid(model.score_method_tensor(point)).detach().item()
+                f_out.write(f"1\t{pos_score}\n")
 
-        positive_triples.append(edge)
-        src = entities_to_id[edge.src]
-        rel = relations_to_id[edge.rel]
-        dst = entities_to_id[edge.dst]
+    print(f"Positive triples: {n_pos}")
+    with open(f"../data/negatives_{onto}.txt", "r") as f:
 
-        point = th.tensor([src, rel, dst], dtype = th.long, device = model.device).unsqueeze(0)
-        score = th.sigmoid(model.score_method_tensor(point)).detach().item()
-        scores.append([1, score])
+        with open(eval_results_file, "a") as f_out:
+            n_neg = 0
+            for line in f.readlines():
+                src, dst = line.strip().split("\t")
+                if not src in entities_to_id:
+                    print(f"Source entity {src} not in training set")
+                    continue
+                if not dst in entities_to_id:
+                    print(f"Destination entity {dst} not in training set")
+                    continue
 
-    for edge in tqdm(positive_triples, total = len(positive_triples)):
-        found = False
-        while not found:
-            sampled_dst = random.choice(list(entities_to_id.keys()))
-            sampled_edge = Edge(edge.src, edge.rel, sampled_dst)
-            if not sampled_edge in set(training_graph) | set(testing_graph):
-                found = True
+                n_neg += 1
+                src = entities_to_id[src]
+                rel = relations_to_id["http://subclassof"]
+                dst = entities_to_id[dst]
 
-        src, rel, dst = entities_to_id[edge.src], relations_to_id[edge.rel], entities_to_id[sampled_dst]
-        point = th.tensor([src, rel, dst], dtype = th.long, device = model.device).unsqueeze(0)
-        score = model.score_method_tensor(point)
-        score = th.sigmoid(score).detach().item()
-        
-        scores.append([0, score])
+                point = [src, rel, dst]
+                point = th.tensor(point, dtype=th.long, device=model.device).unsqueeze(0)
+                pos_score = th.sigmoid(model.score_method_tensor(point)).detach().item()
+                f_out.write(f"0\t{pos_score}\n")
 
-    print(len(scores))
-    with open(out_file, "w") as f:
-        for label, score in scores:
-            f.write("{}\t{}\n".format(label, score))
-    return scores
+    print(f"Negative triples: {n_neg}")
+    #scores = undecidable_scores + scores
 
 
 def compute_metrics(eval_tsv_file):
@@ -124,7 +125,7 @@ def compute_metrics(eval_tsv_file):
     f1_scores = 2 * recall * precision / (recall + precision + 1e-10)
     fmax = round(np.max(f1_scores), 4)
     
-    return mae_pos, auc, aupr, fmax
+    return mae_pos, auc, aupr, fmax, len(eval_data)
 
 def predict_inferences(model, dataset):
     """Predict subsumption inferences
